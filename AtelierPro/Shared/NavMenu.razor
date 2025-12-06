@@ -84,7 +84,7 @@
                 @if (authContext.User.IsInRole("Admin") || authContext.User.IsInRole("Finanzas") || authContext.User.IsInRole("Taller"))
                 {
                     <div class="nav-module px-3">
-                        <button class="btn btn-link nav-module-header w-100 text-start p-2" @onclick="() => ToggleModule('taller')" type="button">
+                        <button class="btn btn-link nav-module-header w-100 text-start p-2" @onclick='() => ToggleModule("taller")' type="button">
                             <span class="oi oi-wrench me-2" aria-hidden="true"></span>
                             <span class="module-title">Taller</span>
                             <span class="float-end">
@@ -118,7 +118,7 @@
                 @if (authContext.User.IsInRole("Admin") || authContext.User.IsInRole("Finanzas") || authContext.User.IsInRole("Taller"))
                 {
                     <div class="nav-module px-3">
-                        <button class="btn btn-link nav-module-header w-100 text-start p-2" @onclick="() => ToggleModule('almacen')" type="button">
+                        <button class="btn btn-link nav-module-header w-100 text-start p-2" @onclick='() => ToggleModule("almacen")' type="button">
                             <span class="oi oi-box me-2" aria-hidden="true"></span>
                             <span class="module-title">Almacén</span>
                             <span class="float-end">
@@ -157,7 +157,7 @@
                 @if (authContext.User.IsInRole("Admin") || authContext.User.IsInRole("Finanzas"))
                 {
                     <div class="nav-module px-3">
-                        <button class="btn btn-link nav-module-header w-100 text-start p-2" @onclick="() => ToggleModule('compras')" type="button">
+                        <button class="btn btn-link nav-module-header w-100 text-start p-2" @onclick='() => ToggleModule("compras")' type="button">
                             <span class="oi oi-cart me-2" aria-hidden="true"></span>
                             <span class="module-title">Compras</span>
                             <span class="float-end">
@@ -189,17 +189,6 @@
                                 </div>
                             </div>
                         }
-                    </div>
-                }
-
-            </Authorized>
-        </AuthorizeView>
-    </nav>
-</div>
-                            <NavLink class="nav-link" href="compras/crear-orden">
-                                <span class="oi oi-plus" aria-hidden="true"></span> Crear Orden (MVP)
-                            </NavLink>
-                        </div>
                     </div>
                 }
 
