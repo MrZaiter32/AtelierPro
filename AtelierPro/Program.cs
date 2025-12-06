@@ -4,12 +4,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using AtelierPro.Data;
 using AtelierPro.Services;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddMudServices();
 builder.Services.AddControllers(); // Agregar soporte para API Controllers
 
 // Configurar DbContext con SQLite
