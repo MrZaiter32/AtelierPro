@@ -1,0 +1,57 @@
+@using AtelierPro.Services
+@inject TallerService TallerService
+
+<div class="mb-3">
+    <label for="tecnico-select" class="form-label">Técnico Asignado</label>
+    <select id="tecnico-select" class="form-select" value="@SelectedTecnicoId?.ToString() ?? string.Empty" @onchange="OnTecnicoChanged" disabled="@IsDisabled">
+        <option value="">-- Seleccionar Técnico --</option>
+        @foreach (var tecnico in Tecnicos)
+        {
+            <option value="@tecnico.Id">@tecnico.Nombre @tecnico.Apellido (@tecnico.Especialidad)</option>
+        }
+    </select>
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <small class="text-danger d-block mt-2">@ErrorMessage</small>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid? SelectedTecnicoId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid?> SelectedTecnicoIdChanged { get; set; }
+
+    [Parameter]
+    public bool IsDisabled { get; set; } = false;
+
+    private List<Tecnico> Tecnicos = new();
+    private string ErrorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Tecnicos = (await TallerService.ObtenerTecnicosAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error al cargar técnicos: {ex.Message}";
+        }
+    }
+
+    private async Task OnTecnicoChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var tecnicoId) && tecnicoId != Guid.Empty)
+        {
+            SelectedTecnicoId = tecnicoId;
+        }
+        else
+        {
+            SelectedTecnicoId = null;
+        }
+        
+        await SelectedTecnicoIdChanged.InvokeAsync(SelectedTecnicoId);
+    }
+}

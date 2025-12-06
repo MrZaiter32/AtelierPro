@@ -1,0 +1,106 @@
+@using AtelierPro.Models
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <div class="row align-items-center">
+            <div class="col">
+                <h6 class="mb-0">
+                    <strong>@Item.Codigo</strong> - @Item.Descripcion
+                </h6>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-sm btn-danger" @onclick="OnRemove">
+                    <span class="oi oi-trash"></span> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Código</label>
+                    <input type="text" class="form-control" @bind="Item.Codigo" />
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <input type="text" class="form-control" @bind="Item.Descripcion" />
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Tiempo Asignado (Horas)</label>
+                    <input type="number" class="form-control" @bind.number="Item.TiempoAsignadoHoras" min="0" step="0.5" />
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Precio Unitario</label>
+                    <input type="number" class="form-control" @bind.number="Item.PrecioUnitario" min="0" step="0.01" />
+                </div>
+            </div>
+        </div>
+
+        @if (Item.Tipo == TipoItemPresupuesto.Pieza)
+        {
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="requierePintura" @bind="Item.RequierePintura" />
+                        <label class="form-check-label" for="requierePintura">
+                            Requiere Pintura
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="requiereDesmontaje" @bind="Item.RequiereDesmontajeDoble" />
+                        <label class="form-check-label" for="requiereDesmontaje">
+                            Requiere Desmontaje Doble
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="requiereAlineacion" @bind="Item.RequiereAlineacion" />
+                        <label class="form-check-label" for="requiereAlineacion">
+                            Requiere Alineación
+                        </label>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Porcentaje Ajuste (%)</label>
+                    <input type="number" class="form-control" @bind.number="Item.PorcentajeAjuste" min="-100" step="0.1" />
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info" role="alert">
+            <strong>Costo Base:</strong> @(Item.CostoBase.ToString("C"))<br />
+            <strong>Costo Ajustado:</strong> @(Item.CostoAjustado.ToString("C"))
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public ItemPresupuesto Item { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnItemRemoved { get; set; }
+
+    private async Task OnRemove()
+    {
+        await OnItemRemoved.InvokeAsync();
+    }
+}

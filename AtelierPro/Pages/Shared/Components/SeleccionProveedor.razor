@@ -1,0 +1,57 @@
+@using AtelierPro.Services
+@inject ComprasService ComprasService
+
+<div class="mb-3">
+    <label for="proveedor-select" class="form-label">Proveedor</label>
+    <select id="proveedor-select" class="form-select" value="@SelectedProveedorId?.ToString() ?? string.Empty" @onchange="OnProveedorChanged" disabled="@IsDisabled">
+        <option value="">-- Seleccionar Proveedor --</option>
+        @foreach (var proveedor in Proveedores)
+        {
+            <option value="@proveedor.Id">@proveedor.RazonSocial (RFC: @proveedor.Rfc)</option>
+        }
+    </select>
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <small class="text-danger d-block mt-2">@ErrorMessage</small>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid? SelectedProveedorId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid?> SelectedProveedorIdChanged { get; set; }
+
+    [Parameter]
+    public bool IsDisabled { get; set; } = false;
+
+    private List<Proveedor> Proveedores = new();
+    private string ErrorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Proveedores = (await ComprasService.ObtenerProveedoresAsync(soloActivos: true)).ToList();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error al cargar proveedores: {ex.Message}";
+        }
+    }
+
+    private async Task OnProveedorChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var proveedorId) && proveedorId != Guid.Empty)
+        {
+            SelectedProveedorId = proveedorId;
+        }
+        else
+        {
+            SelectedProveedorId = null;
+        }
+        
+        await SelectedProveedorIdChanged.InvokeAsync(SelectedProveedorId);
+    }
+}
