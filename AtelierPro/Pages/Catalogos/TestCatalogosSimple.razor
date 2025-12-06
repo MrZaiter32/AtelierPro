@@ -1,0 +1,159 @@
+@page "/test-catalogos-simple"
+@using System.Text.Json
+@using System.Text
+@inject HttpClient HttpClient
+
+<PageTitle>Test Catálogos Simple</PageTitle>
+
+<div class="container mt-4">
+    <h1>🔍 Prueba de Integración de Catálogos</h1>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Buscar Producto en Catálogos</h5>
+            
+            <div class="form-group">
+                <label for="partNumber">Part Number</label>
+                <input type="text" class="form-control" id="partNumber" @bind="partNumber" placeholder="Ej: R537001" />
+            </div>
+            
+            <div class="form-group">
+                <label for="manufacturer">Fabricante (opcional)</label>
+                <input type="text" class="form-control" id="manufacturer" @bind="manufacturer" placeholder="Ej: Meritor" />
+            </div>
+            
+            <button class="btn btn-primary" @onclick="BuscarProducto" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span>Buscando...</span>
+                }
+                else
+                {
+                    <span>🔍 Buscar</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert alert-info">@statusMessage</div>
+    }
+
+    @if (resultados != null && resultados.Any())
+    {
+        <div class="card">
+            <div class="card-header">
+                <h5>📦 Resultados de Búsqueda (@resultados.Count productos encontrados)</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Proveedor</th>
+                            <th>Part Number</th>
+                            <th>Fabricante</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var producto in resultados)
+                        {
+                            <tr>
+                                <td>@producto.Proveedor</td>
+                                <td><strong>@producto.PartNumber</strong></td>
+                                <td>@producto.Manufacturer</td>
+                                <td>@(producto.Description.Length > 50 ? producto.Description.Substring(0, 50) + "..." : producto.Description)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string partNumber = "";
+    private string manufacturer = "";
+    private bool isLoading = false;
+    private string statusMessage = "";
+    private List<ProductoResultado> resultados = new();
+
+    private async Task BuscarProducto()
+    {
+        if (string.IsNullOrWhiteSpace(partNumber))
+        {
+            statusMessage = "Por favor ingrese un Part Number";
+            return;
+        }
+
+        isLoading = true;
+        statusMessage = "";
+        resultados.Clear();
+
+        try
+        {
+            var url = $"/api/catalogos/buscar?partNumber={Uri.EscapeDataString(partNumber)}";
+            if (!string.IsNullOrWhiteSpace(manufacturer))
+            {
+                url += $"&manufacturer={Uri.EscapeDataString(manufacturer)}";
+            }
+
+            var response = await HttpClient.GetAsync(url);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var resultado = JsonSerializer.Deserialize<BusquedaResponse>(jsonResponse, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (resultado?.Success == true && resultado.Productos?.Any() == true)
+                {
+                    resultados = resultado.Productos.Select(p => new ProductoResultado
+                    {
+                        Proveedor = p.Proveedor,
+                        PartNumber = p.PartNumber,
+                        Manufacturer = p.Manufacturer,
+                        Description = p.Description
+                    }).ToList();
+
+                    statusMessage = $"✅ {resultados.Count} productos encontrados exitosamente";
+                }
+                else
+                {
+                    statusMessage = $"⚠️ {resultado?.Mensaje ?? "No se encontraron productos"}";
+                }
+            }
+            else
+            {
+                statusMessage = $"❌ Error en la búsqueda: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public class ProductoResultado
+    {
+        public string Proveedor { get; set; } = "";
+        public string PartNumber { get; set; } = "";
+        public string Manufacturer { get; set; } = "";
+        public string Description { get; set; } = "";
+    }
+
+    public class BusquedaResponse
+    {
+        public bool Success { get; set; }
+        public string Mensaje { get; set; } = "";
+        public List<ProductoResultado> Productos { get; set; } = new();
+    }
+}
