@@ -80,74 +80,122 @@
 
                 <div class="nav-divider"></div>
 
+                @* MÓDULO TALLER *@
                 @if (authContext.User.IsInRole("Admin") || authContext.User.IsInRole("Finanzas") || authContext.User.IsInRole("Taller"))
                 {
-                    <div class="nav-group">
-                        <div class="nav-item px-3">
-                            <span class="oi oi-wrench" aria-hidden="true"></span>
-                            <span class="ms-2">Taller</span>
-                        </div>
-                        <div class="nav-item px-3 ms-3">
-                            <NavLink class="nav-link" href="taller/ordenes">
-                                <span class="oi oi-list" aria-hidden="true"></span> Órdenes de Reparación
-                            </NavLink>
-                        </div>
-                        <div class="nav-item px-3 ms-3">
-                            <NavLink class="nav-link" href="taller/calendario">
-                                <span class="oi oi-calendar" aria-hidden="true"></span> Calendario
-                            </NavLink>
-                        </div>
-                    </div>
-                }
-
-                @if (authContext.User.IsInRole("Admin") || authContext.User.IsInRole("Finanzas") || authContext.User.IsInRole("Taller"))
-                {
-                    <div class="nav-group">
-                        <div class="nav-item px-3">
-                            <span class="oi oi-box" aria-hidden="true"></span>
-                            <span class="ms-2">Almacén</span>
-                        </div>
-                        <div class="nav-item px-3 ms-3">
-                            <NavLink class="nav-link" href="almacen/refacciones">
-                                <span class="oi oi-spreadsheet" aria-hidden="true"></span> Refacciones
-                            </NavLink>
-                        </div>
-                            <div class="nav-item px-3 ms-3">
-                                <NavLink class="nav-link" href="almacen/movimientos">
-                                    <span class="oi oi-arrow-right" aria-hidden="true"></span> Movimientos
-                                </NavLink>
+                    <div class="nav-module px-3">
+                        <button class="btn btn-link nav-module-header w-100 text-start p-2" @onclick="() => ToggleModule('taller')" type="button">
+                            <span class="oi oi-wrench me-2" aria-hidden="true"></span>
+                            <span class="module-title">Taller</span>
+                            <span class="float-end">
+                                <span class="@($"oi {(ExpandedModules.Contains("taller") ? "oi-chevron-bottom" : "oi-chevron-right")}")" aria-hidden="true"></span>
+                            </span>
+                        </button>
+                        @if (ExpandedModules.Contains("taller"))
+                        {
+                            <div class="nav-submenu ps-3">
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="taller/ordenes">
+                                        <span class="oi oi-list me-2" aria-hidden="true"></span> Órdenes de Reparación
+                                    </NavLink>
+                                </div>
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="taller/calendario">
+                                        <span class="oi oi-calendar me-2" aria-hidden="true"></span> Calendario
+                                    </NavLink>
+                                </div>
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="taller/tecnicos">
+                                        <span class="oi oi-person me-2" aria-hidden="true"></span> Técnicos
+                                    </NavLink>
+                                </div>
                             </div>
-                        <div class="nav-item px-3 ms-3">
-                            <NavLink class="nav-link" href="almacen/cuentos">
-                                <span class="oi oi-clipboard" aria-hidden="true"></span> Cuentos Físicos
-                            </NavLink>
-                        </div>
+                        }
                     </div>
                 }
 
+                @* MÓDULO ALMACÉN *@
+                @if (authContext.User.IsInRole("Admin") || authContext.User.IsInRole("Finanzas") || authContext.User.IsInRole("Taller"))
+                {
+                    <div class="nav-module px-3">
+                        <button class="btn btn-link nav-module-header w-100 text-start p-2" @onclick="() => ToggleModule('almacen')" type="button">
+                            <span class="oi oi-box me-2" aria-hidden="true"></span>
+                            <span class="module-title">Almacén</span>
+                            <span class="float-end">
+                                <span class="@($"oi {(ExpandedModules.Contains("almacen") ? "oi-chevron-bottom" : "oi-chevron-right")}")" aria-hidden="true"></span>
+                            </span>
+                        </button>
+                        @if (ExpandedModules.Contains("almacen"))
+                        {
+                            <div class="nav-submenu ps-3">
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="almacen/refacciones">
+                                        <span class="oi oi-spreadsheet me-2" aria-hidden="true"></span> Refacciones
+                                    </NavLink>
+                                </div>
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="almacen/movimientos">
+                                        <span class="oi oi-arrow-right me-2" aria-hidden="true"></span> Movimientos
+                                    </NavLink>
+                                </div>
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="almacen/cuentos">
+                                        <span class="oi oi-clipboard me-2" aria-hidden="true"></span> Cuentos Físicos
+                                    </NavLink>
+                                </div>
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="almacen/alertas">
+                                        <span class="oi oi-warning me-2" aria-hidden="true"></span> Alertas
+                                    </NavLink>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* MÓDULO COMPRAS *@
                 @if (authContext.User.IsInRole("Admin") || authContext.User.IsInRole("Finanzas"))
                 {
-                    <div class="nav-group">
-                        <div class="nav-item px-3">
-                            <span class="oi oi-cart" aria-hidden="true"></span>
-                            <span class="ms-2">Compras</span>
-                        </div>
-                        <div class="nav-item px-3 ms-3">
-                            <NavLink class="nav-link" href="compras/proveedores">
-                                <span class="oi oi-truck" aria-hidden="true"></span> Proveedores
-                            </NavLink>
-                        </div>
-                            <div class="nav-item px-3 ms-3">
-                                <NavLink class="nav-link" href="compras/ordenes">
-                                    <span class="oi oi-cart" aria-hidden="true"></span> Órdenes Compra
-                                </NavLink>
+                    <div class="nav-module px-3">
+                        <button class="btn btn-link nav-module-header w-100 text-start p-2" @onclick="() => ToggleModule('compras')" type="button">
+                            <span class="oi oi-cart me-2" aria-hidden="true"></span>
+                            <span class="module-title">Compras</span>
+                            <span class="float-end">
+                                <span class="@($"oi {(ExpandedModules.Contains("compras") ? "oi-chevron-bottom" : "oi-chevron-right")}")" aria-hidden="true"></span>
+                            </span>
+                        </button>
+                        @if (ExpandedModules.Contains("compras"))
+                        {
+                            <div class="nav-submenu ps-3">
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="compras/proveedores">
+                                        <span class="oi oi-truck me-2" aria-hidden="true"></span> Proveedores
+                                    </NavLink>
+                                </div>
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="compras/ordenes">
+                                        <span class="oi oi-cart me-2" aria-hidden="true"></span> Órdenes de Compra
+                                    </NavLink>
+                                </div>
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="compras/registro">
+                                        <span class="oi oi-book me-2" aria-hidden="true"></span> Requisiciones
+                                    </NavLink>
+                                </div>
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="compras/crear-orden">
+                                        <span class="oi oi-plus me-2" aria-hidden="true"></span> Crear Orden
+                                    </NavLink>
+                                </div>
                             </div>
-                        <div class="nav-item px-3 ms-3">
-                            <NavLink class="nav-link" href="compras/registro">
-                                <span class="oi oi-book" aria-hidden="true"></span> Registro Requisiciones
-                            </NavLink>
-                        </div>
-                        <div class="nav-item px-3 ms-3">
+                        }
+                    </div>
+                }
+
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
                             <NavLink class="nav-link" href="compras/crear-orden">
                                 <span class="oi oi-plus" aria-hidden="true"></span> Crear Orden (MVP)
                             </NavLink>
@@ -179,6 +227,7 @@
 @code {
     private bool collapseNavMenu = true;
     private ApplicationUser? CurrentUser;
+    private HashSet<string> ExpandedModules = new() { "taller" };
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
@@ -196,5 +245,13 @@
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void ToggleModule(string moduleName)
+    {
+        if (ExpandedModules.Contains(moduleName))
+            ExpandedModules.Remove(moduleName);
+        else
+            ExpandedModules.Add(moduleName);
     }
 }
