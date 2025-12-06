@@ -1,0 +1,50 @@
+@page "/crm/clientes"
+@using AtelierPro.Models
+@using AtelierPro.Services
+@inject ClienteService ClienteSvc
+
+<PageTitle>CRM - Lista de Clientes</PageTitle>
+
+<h1>CRM - Lista de Clientes</h1>
+
+<p>Esta página muestra la lista de clientes del taller.</p>
+
+@if (clientes == null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead class="thead-dark">
+            <tr>
+                <th>Nombre</th>
+                <th>Historial</th>
+                <th>Preferencias de Contacto</th>
+                <th>NPS</th>
+                <th>Tasa de Retención</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cliente in clientes)
+            {
+                <tr>
+                    <td>@cliente.Nombre</td>
+                    <td>@cliente.Historial</td>
+                    <td>@cliente.Preferencias</td>
+                    <td>@cliente.Nps</td>
+                    <td>@cliente.TasaRetencion.ToString("P0")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Cliente>? clientes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        clientes = await ClienteSvc.GetClientesAsync();
+    }
+}

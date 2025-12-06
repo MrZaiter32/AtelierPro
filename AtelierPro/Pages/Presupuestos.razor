@@ -1,0 +1,125 @@
+@page "/presupuestos"
+@using AtelierPro.Models
+@using AtelierPro.Services
+@inject PresupuestoRepository PresupuestoRepo
+
+<PageTitle>Presupuestos</PageTitle>
+
+<h1>Gestión de Presupuestos</h1>
+
+<p>Lista de presupuestos en el sistema.</p>
+
+@if (presupuestos == null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <div class="mb-3">
+        <button class="btn btn-primary" @onclick="CrearNuevoPresupuesto">
+            <i class="oi oi-plus"></i> Nuevo Presupuesto
+        </button>
+    </div>
+
+    <table class="table table-striped">
+        <thead class="thead-dark">
+            <tr>
+                <th>ID</th>
+                <th>Vehículo</th>
+                <th>VIN</th>
+                <th>Items</th>
+                <th>Subtotal</th>
+                <th>IVA</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var presupuesto in presupuestos)
+            {
+                <tr>
+                    <td>@presupuesto.Id.ToString().Substring(0, 8)...</td>
+                    <td>@presupuesto.Vehiculo?.Version</td>
+                    <td>@presupuesto.Vehiculo?.Vin</td>
+                    <td>@presupuesto.Items.Count</td>
+                    <td>@presupuesto.Subtotal.ToString("C2")</td>
+                    <td>@presupuesto.IvaAplicado.ToString("C2")</td>
+                    <td>@presupuesto.TotalFinal.ToString("C2")</td>
+                    <td>
+                        <span class="badge @GetEstadoBadgeClass(presupuesto.Estado)">
+                            @presupuesto.Estado
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-info" @onclick="() => VerDetalle(presupuesto.Id)">
+                            <i class="oi oi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-warning" @onclick="() => EditarPresupuesto(presupuesto.Id)">
+                            <i class="oi oi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarPresupuesto(presupuesto.Id)">
+                            <i class="oi oi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Presupuesto>? presupuestos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarPresupuestos();
+    }
+
+    private async Task CargarPresupuestos()
+    {
+        presupuestos = await PresupuestoRepo.ObtenerTodosAsync();
+    }
+
+    private void CrearNuevoPresupuesto()
+    {
+        // TODO: Implementar navegación a formulario de creación
+    }
+
+    private void VerDetalle(Guid id)
+    {
+        // TODO: Implementar vista de detalle
+    }
+
+    private void EditarPresupuesto(Guid id)
+    {
+        // TODO: Implementar edición
+    }
+
+    private async Task EliminarPresupuesto(Guid id)
+    {
+        if (confirm($"¿Está seguro de eliminar el presupuesto {id}?"))
+        {
+            await PresupuestoRepo.EliminarAsync(id);
+            await CargarPresupuestos();
+        }
+    }
+
+    private string GetEstadoBadgeClass(EstadoPresupuesto estado)
+    {
+        return estado switch
+        {
+            EstadoPresupuesto.Borrador => "badge-secondary",
+            EstadoPresupuesto.Aprobado => "badge-success",
+            EstadoPresupuesto.Cerrado => "badge-info",
+            EstadoPresupuesto.Facturado => "badge-primary",
+            _ => "badge-light"
+        };
+    }
+
+    private bool confirm(string message)
+    {
+        // En producción, usar JavaScript interop para confirm()
+        return true;
+    }
+}

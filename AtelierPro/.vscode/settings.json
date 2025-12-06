@@ -1,0 +1,4 @@
+{
+    "dotnet.server.useOmnisharp": false,
+    "omnisharp.dotnetPath": "/home/n3thun73r/.dotnet/dotnet"
+}

@@ -1,0 +1,61 @@
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.EntityFrameworkCore;
+using AtelierPro.Data;
+using AtelierPro.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddRazorPages();
+builder.Services.AddServerSideBlazor();
+builder.Services.AddControllers(); // Agregar soporte para API Controllers
+
+// Configurar DbContext con SQLite
+builder.Services.AddDbContext<AtelierProDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") 
+        ?? "Data Source=atelierpro.db"));
+
+// Repositorios (Scoped - una instancia por request)
+builder.Services.AddScoped<PresupuestoRepository>();
+builder.Services.AddScoped<ClienteRepository>();
+
+// Servicios de dominio (cambiar a Scoped para trabajar con EF Core)
+builder.Services.AddScoped<ReglaService>();
+builder.Services.AddScoped<PresupuestoService>();
+builder.Services.AddScoped<WorkflowService>();
+builder.Services.AddScoped<ClienteService>();
+
+// Mantener ErpDataService como Singleton solo para demo/seed inicial
+builder.Services.AddSingleton<WeatherForecastService>();
+builder.Services.AddSingleton<ErpDataService>();
+
+var app = builder.Build();
+
+// Asegurar que la base de datos esté creada y con seed
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AtelierProDbContext>();
+    context.Database.EnsureCreated();
+    await DbSeeder.SeedAsync(context);
+}
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.MapControllers(); // Mapear los endpoints de API
+app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
+
+app.Run();
