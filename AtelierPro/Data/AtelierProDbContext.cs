@@ -43,6 +43,7 @@ public class AtelierProDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<CuentoFisico> CuentosFisicos => Set<CuentoFisico>();
     public DbSet<CuentoFisicoDetalle> DetallesCuentoFisico => Set<CuentoFisicoDetalle>();
     public DbSet<Proveedor> Proveedores => Set<Proveedor>();
+    public DbSet<ReferenciaAlternativa> ReferenciasAlternativas => Set<ReferenciaAlternativa>();
     #endregion
 
     #region Módulo de Compras (FASE 1)
@@ -360,6 +361,17 @@ public class AtelierProDbContext : IdentityDbContext<ApplicationUser, Applicatio
         modelBuilder.Entity<FirmaDigital>(entity =>
         {
             entity.HasKey(e => e.Id);
+        });
+
+        // Configuración de ReferenciaAlternativa (Catálogos)
+        modelBuilder.Entity<ReferenciaAlternativa>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Refaccion)
+                .WithMany()
+                .HasForeignKey(e => e.RefaccionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.FabricanteRef, e.PartNumberRef });
         });
     }
 

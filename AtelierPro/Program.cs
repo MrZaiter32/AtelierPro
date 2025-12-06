@@ -58,6 +58,9 @@ builder.Services.AddScoped<TallerService>(); // FASE 1
 builder.Services.AddScoped<AlmacenService>(); // FASE 1
 builder.Services.AddScoped<ComprasService>(); // FASE 1
 
+// Servicios de catálogos
+builder.Services.AddHttpClient(); // Para los servicios HTTP de catálogos
+
 // Mantener ErpDataService como Singleton solo para demo/seed inicial
 builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddSingleton<ErpDataService>();

@@ -1,0 +1,269 @@
+@page "/test-catalogos"
+@using System.Text.Json
+@using System.Text
+@inject HttpClient HttpClient
+@inject IJSRuntime JS
+
+<PageTitle>Test de Catálogos</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h3" Class="mb-4">🔍 Prueba de Integración de Catálogos</MudText>
+    
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Buscar Producto en Catálogos</MudText>
+            
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="partNumber" 
+                                  Label="Part Number" 
+                                  Placeholder="Ej: R537001"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="manufacturer" 
+                                  Label="Fabricante (opcional)" 
+                                  Placeholder="Ej: Meritor"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudButton OnClick="BuscarProducto" 
+                               Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               FullWidth="true"
+                               Disabled="isLoading">
+                        @if (isLoading)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                            <MudText Class="ms-2">Buscando...</MudText>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="Icons.Material.Filled.Search" Class="me-2" />
+                            <MudText>Buscar</MudText>
+                        }
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <MudAlert Severity="messageSeverity" Class="mb-4">@statusMessage</MudAlert>
+    }
+
+    @if (resultados != null && resultados.Any())
+    {
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">
+                        📦 Resultados de Búsqueda (@resultados.Count productos encontrados)
+                    </MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudTable Items="@resultados" Hover="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Proveedor</MudTh>
+                        <MudTh>Part Number</MudTh>
+                        <MudTh>Fabricante</MudTh>
+                        <MudTh>Descripción</MudTh>
+                        <MudTh>Referencias Cruzadas</MudTh>
+                        <MudTh>Acciones</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Proveedor">
+                            <MudChip Color="Color.Info" Size="Size.Small">@context.Proveedor</MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Part Number">
+                            <MudText Typo="Typo.body2"><strong>@context.PartNumber</strong></MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Fabricante">@context.Manufacturer</MudTd>
+                        <MudTd DataLabel="Descripción">
+                            <MudText Typo="Typo.body2" Style="max-width: 200px;">
+                                @(context.Description.Length > 50 ? context.Description.Substring(0, 50) + "..." : context.Description)
+                            </MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Referencias">
+                            @if (context.CrossReferences?.Any() == true)
+                            {
+                                <MudText Typo="Typo.caption">
+                                    @string.Join(", ", context.CrossReferences.Take(2).Select(cr => $"{cr.Manufacturer} {cr.PartNumber}"))
+                                    @(context.CrossReferences.Count > 2 ? "..." : "")
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption">Sin referencias</MudText>
+                            }
+                        </MudTd>
+                        <MudTd>
+                            <MudButton Size="Size.Small" 
+                                       Variant="Variant.Filled" 
+                                       Color="Color.Success"
+                                       OnClick="() => ImportarProducto(context)"
+                                       StartIcon="@Icons.Material.Filled.Download">
+                                Importar
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    private string partNumber = "";
+    private string manufacturer = "";
+    private bool isLoading = false;
+    private string statusMessage = "";
+    private Severity messageSeverity = Severity.Info;
+    private List<ProductoResultado> resultados = new();
+
+    private async Task BuscarProducto()
+    {
+        if (string.IsNullOrWhiteSpace(partNumber))
+        {
+            statusMessage = "Por favor ingrese un Part Number";
+            messageSeverity = Severity.Warning;
+            return;
+        }
+
+        isLoading = true;
+        statusMessage = "";
+        resultados.Clear();
+
+        try
+        {
+            var url = $"/api/catalogos/buscar?partNumber={Uri.EscapeDataString(partNumber)}";
+            if (!string.IsNullOrWhiteSpace(manufacturer))
+            {
+                url += $"&manufacturer={Uri.EscapeDataString(manufacturer)}";
+            }
+
+            var response = await HttpClient.GetAsync(url);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var resultado = JsonSerializer.Deserialize<BusquedaResponse>(jsonResponse, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (resultado?.Success == true && resultado.Productos?.Any() == true)
+                {
+                    resultados = resultado.Productos.Select(p => new ProductoResultado
+                    {
+                        Proveedor = p.Proveedor,
+                        PartNumber = p.PartNumber,
+                        Manufacturer = p.Manufacturer,
+                        Description = p.Description,
+                        Url = p.Url,
+                        CrossReferences = p.CrossReferences?.Select(cr => new CrossReferenceDto
+                        {
+                            Manufacturer = cr.Manufacturer,
+                            PartNumber = cr.PartNumber,
+                            Tipo = cr.Tipo
+                        }).ToList() ?? new List<CrossReferenceDto>()
+                    }).ToList();
+
+                    statusMessage = $"✅ {resultados.Count} productos encontrados exitosamente";
+                    messageSeverity = Severity.Success;
+                }
+                else
+                {
+                    statusMessage = $"⚠️ {resultado?.Mensaje ?? "No se encontraron productos"}";
+                    messageSeverity = Severity.Warning;
+                }
+            }
+            else
+            {
+                statusMessage = $"❌ Error en la búsqueda: {response.StatusCode}";
+                messageSeverity = Severity.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error: {ex.Message}";
+            messageSeverity = Severity.Error;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ImportarProducto(ProductoResultado producto)
+    {
+        try
+        {
+            var request = new
+            {
+                Producto = new
+                {
+                    producto.Proveedor,
+                    producto.PartNumber,
+                    producto.Manufacturer,
+                    producto.Description,
+                    producto.Url,
+                    CrossReferences = producto.CrossReferences.Select(cr => new
+                    {
+                        cr.Manufacturer,
+                        cr.PartNumber,
+                        cr.Tipo
+                    }),
+                    AdditionalInfo = ""
+                }
+            };
+
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await HttpClient.PostAsync("/api/catalogos/producto/importar", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("alert", $"✅ Producto {producto.PartNumber} importado exitosamente al inventario");
+                statusMessage = $"✅ Producto {producto.PartNumber} importado exitosamente";
+                messageSeverity = Severity.Success;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("alert", $"❌ Error importando producto: {errorContent}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"❌ Error: {ex.Message}");
+        }
+    }
+
+    public class ProductoResultado
+    {
+        public string Proveedor { get; set; } = "";
+        public string PartNumber { get; set; } = "";
+        public string Manufacturer { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Url { get; set; } = "";
+        public List<CrossReferenceDto> CrossReferences { get; set; } = new();
+    }
+
+    public class CrossReferenceDto
+    {
+        public string Manufacturer { get; set; } = "";
+        public string PartNumber { get; set; } = "";
+        public string Tipo { get; set; } = "";
+    }
+
+    public class BusquedaResponse
+    {
+        public bool Success { get; set; }
+        public string Mensaje { get; set; } = "";
+        public List<ProductoResultado> Productos { get; set; } = new();
+    }
+}

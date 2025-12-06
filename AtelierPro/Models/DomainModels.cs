@@ -553,3 +553,67 @@ public sealed class DashboardKpi
     public int OrdenesActivas { get; set; }
     public decimal FlujoCajaProyectado { get; set; }
 }
+
+#region Catálogos Models
+
+/// <summary>
+/// Referencias alternativas/cruzadas para refacciones.
+/// </summary>
+public sealed class ReferenciaAlternativa
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid RefaccionId { get; set; }
+    public Refaccion? Refaccion { get; set; }
+    
+    public string FabricanteRef { get; set; } = string.Empty;
+    public string PartNumberRef { get; set; } = string.Empty;
+    public string Tipo { get; set; } = string.Empty; // 'Equivalente', 'Alternativo', 'Reemplazo'
+    
+    public string ProveedorCatalogo { get; set; } = string.Empty; // 'FinditParts', 'FleetPride', etc.
+    public string UrlCatalogo { get; set; } = string.Empty;
+    public DateTime FechaActualizacion { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Información de productos de catálogos externos.
+/// </summary>
+public sealed class ProductoCatalogo
+{
+    public string Proveedor { get; set; } = string.Empty;
+    public string PartNumber { get; set; } = string.Empty;
+    public string Manufacturer { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public List<CrossReference> CrossReferences { get; set; } = new List<CrossReference>();
+    public string AdditionalInfo { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Referencia cruzada de productos.
+/// </summary>
+public sealed class CrossReference
+{
+    public string Manufacturer { get; set; } = string.Empty;
+    public string PartNumber { get; set; } = string.Empty;
+    public string Tipo { get; set; } = "Equivalente";
+    
+    public override string ToString()
+    {
+        return $"{Manufacturer} {PartNumber}";
+    }
+}
+
+/// <summary>
+/// Resultado de búsqueda en catálogos.
+/// </summary>
+public sealed class ResultadoBusqueda
+{
+    public bool Success { get; set; }
+    public string Mensaje { get; set; } = string.Empty;
+    public List<ProductoCatalogo> Productos { get; set; } = new List<ProductoCatalogo>();
+    public int TotalResultados => Productos.Count;
+    public Dictionary<string, int> ResultadosPorProveedor { get; set; } = new Dictionary<string, int>();
+    public DateTime FechaBusqueda { get; set; } = DateTime.UtcNow;
+}
+
+#endregion
