@@ -1,0 +1,123 @@
+@page "/auth/login"
+@using Microsoft.AspNetCore.Identity
+@using AtelierPro.Data
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager NavigationManager
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Iniciar Sesión</h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @ErrorMessage
+                            <button type="button" class="btn-close" @onclick="ClearError"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="LoginModel" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo Electrónico</label>
+                            <InputText id="email" @bind-Value="LoginModel.Email" class="form-control" placeholder="usuario@atelierpro.com" />
+                            <ValidationMessage For="@(() => LoginModel.Email)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <InputPassword @bind-Value="LoginModel.Password" class="form-control" placeholder="Ingrese su contraseña" />
+                            <ValidationMessage For="@(() => LoginModel.Password)" />
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <InputCheckbox @bind-Value="LoginModel.RememberMe" class="form-check-input" id="rememberMe" />
+                            <label class="form-check-label" for="rememberMe">
+                                Recuérdame
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" disabled="@IsLoading">
+                            @if (IsLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Iniciando sesión...</span>
+                            }
+                            else
+                            {
+                                <span>Iniciar Sesión</span>
+                            }
+                        </button>
+                    </EditForm>
+
+                    <hr />
+
+                    <div class="text-center">
+                        <p>¿No tienes cuenta? <a href="/auth/register" class="link-primary">Registrarse</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest LoginModel = new();
+    private string ErrorMessage = string.Empty;
+    private bool IsLoading = false;
+
+    private class LoginRequest
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public bool RememberMe { get; set; }
+    }
+
+    private async Task HandleLogin()
+    {
+        IsLoading = true;
+        ErrorMessage = string.Empty;
+
+        try
+        {
+            var result = await SignInManager.PasswordSignInAsync(
+                LoginModel.Email,
+                LoginModel.Password,
+                LoginModel.RememberMe,
+                lockoutOnFailure: true);
+
+            if (result.Succeeded)
+            {
+                NavigationManager.NavigateTo("/", forceLoad: true);
+            }
+            else if (result.IsLockedOut)
+            {
+                ErrorMessage = "La cuenta ha sido bloqueada por demasiados intentos fallidos. Intente más tarde.";
+            }
+            else if (result.RequiresTwoFactor)
+            {
+                ErrorMessage = "Se requiere autenticación de dos factores.";
+            }
+            else
+            {
+                ErrorMessage = "Correo o contraseña inválidos.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error al iniciar sesión: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void ClearError() => ErrorMessage = string.Empty;
+}

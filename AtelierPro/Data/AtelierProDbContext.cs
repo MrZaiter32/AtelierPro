@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using AtelierPro.Models;
 
 namespace AtelierPro.Data;
 
 /// <summary>
-/// Contexto de base de datos para el ERP AtelierPro.
+/// Contexto de base de datos para el ERP AtelierPro con soporte para Identity.
 /// </summary>
-public class AtelierProDbContext : DbContext
+public class AtelierProDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string>
 {
     public AtelierProDbContext(DbContextOptions<AtelierProDbContext> options)
         : base(options)

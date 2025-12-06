@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using AtelierPro.Data;
 using AtelierPro.Services;
 
@@ -15,6 +16,32 @@ builder.Services.AddControllers(); // Agregar soporte para API Controllers
 builder.Services.AddDbContext<AtelierProDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") 
         ?? "Data Source=atelierpro.db"));
+
+// Configurar ASP.NET Core Identity
+builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
+    .AddEntityFrameworkStores<AtelierProDbContext>()
+    .AddDefaultTokenProviders();
+
+// Configurar opciones de Identity
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    // Password settings
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 8;
+    options.Password.RequiredUniqueChars = 1;
+
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings
+    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+    options.User.RequireUniqueEmail = true;
+});
 
 // Repositorios (Scoped - una instancia por request)
 builder.Services.AddScoped<PresupuestoRepository>();
@@ -53,6 +80,10 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+// Agregar middleware de autenticación y autorización
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers(); // Mapear los endpoints de API
 app.MapBlazorHub();

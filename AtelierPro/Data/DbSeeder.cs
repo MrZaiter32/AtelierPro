@@ -1,6 +1,7 @@
 using AtelierPro.Data;
 using AtelierPro.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace AtelierPro.Services;
 
@@ -11,7 +12,13 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(AtelierProDbContext context)
     {
-        // Si ya hay datos, no hacer nada
+        // Crear roles si no existen
+        await SeedRolesAsync(context);
+
+        // Crear usuarios por defecto si no existen
+        await SeedUsersAsync(context);
+
+        // Si ya hay datos de ERP, no hacer nada
         if (await context.Presupuestos.AnyAsync())
         {
             return;
@@ -159,6 +166,132 @@ public static class DbSeeder
         context.FacturasClientes.Add(factura);
 
         // Guardar todos los cambios
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedRolesAsync(AtelierProDbContext context)
+    {
+        var roles = new[]
+        {
+            new ApplicationRole { Name = "Admin", NormalizedName = "ADMIN", Descripcion = "Administrador del sistema" },
+            new ApplicationRole { Name = "Finanzas", NormalizedName = "FINANZAS", Descripcion = "Encargado de finanzas" },
+            new ApplicationRole { Name = "Taller", NormalizedName = "TALLER", Descripcion = "Técnico de taller" },
+            new ApplicationRole { Name = "Cliente", NormalizedName = "CLIENTE", Descripcion = "Cliente del sistema" }
+        };
+
+        foreach (var role in roles)
+        {
+            if (!await context.Roles.AnyAsync(r => r.Name == role.Name))
+            {
+                context.Roles.Add(role);
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedUsersAsync(AtelierProDbContext context)
+    {
+        var passwordHasher = new PasswordHasher<ApplicationUser>();
+
+        var admin = new ApplicationUser
+        {
+            UserName = "admin@atelierpro.com",
+            Email = "admin@atelierpro.com",
+            EmailConfirmed = true,
+            NombreCompleto = "Administrador Sistema",
+            Activo = true,
+            NormalizedUserName = "ADMIN@ATELIERPRO.COM",
+            NormalizedEmail = "ADMIN@ATELIERPRO.COM"
+        };
+        admin.PasswordHash = passwordHasher.HashPassword(admin, "Admin123456");
+
+        var finanzas = new ApplicationUser
+        {
+            UserName = "finanzas@atelierpro.com",
+            Email = "finanzas@atelierpro.com",
+            EmailConfirmed = true,
+            NombreCompleto = "Juan Pérez Finanzas",
+            Activo = true,
+            NormalizedUserName = "FINANZAS@ATELIERPRO.COM",
+            NormalizedEmail = "FINANZAS@ATELIERPRO.COM"
+        };
+        finanzas.PasswordHash = passwordHasher.HashPassword(finanzas, "Finanzas123456");
+
+        var taller = new ApplicationUser
+        {
+            UserName = "taller@atelierpro.com",
+            Email = "taller@atelierpro.com",
+            EmailConfirmed = true,
+            NombreCompleto = "Carlos García Taller",
+            Activo = true,
+            NormalizedUserName = "TALLER@ATELIERPRO.COM",
+            NormalizedEmail = "TALLER@ATELIERPRO.COM"
+        };
+        taller.PasswordHash = passwordHasher.HashPassword(taller, "Taller123456");
+
+        var cliente = new ApplicationUser
+        {
+            UserName = "cliente@example.com",
+            Email = "cliente@example.com",
+            EmailConfirmed = true,
+            NombreCompleto = "María López Cliente",
+            Activo = true,
+            NormalizedUserName = "CLIENTE@EXAMPLE.COM",
+            NormalizedEmail = "CLIENTE@EXAMPLE.COM"
+        };
+        cliente.PasswordHash = passwordHasher.HashPassword(cliente, "Cliente123456");
+
+        // Agregar usuarios si no existen
+        if (!await context.Users.AnyAsync(u => u.Email == "admin@atelierpro.com"))
+        {
+            context.Users.Add(admin);
+            await context.SaveChangesAsync();
+
+            // Agregar usuario a roles
+            await context.UserRoles.AddAsync(new IdentityUserRole<string>
+            {
+                UserId = admin.Id,
+                RoleId = context.Roles.First(r => r.Name == "Admin").Id
+            });
+        }
+
+        if (!await context.Users.AnyAsync(u => u.Email == "finanzas@atelierpro.com"))
+        {
+            context.Users.Add(finanzas);
+            await context.SaveChangesAsync();
+
+            await context.UserRoles.AddAsync(new IdentityUserRole<string>
+            {
+                UserId = finanzas.Id,
+                RoleId = context.Roles.First(r => r.Name == "Finanzas").Id
+            });
+        }
+
+        if (!await context.Users.AnyAsync(u => u.Email == "taller@atelierpro.com"))
+        {
+            context.Users.Add(taller);
+            await context.SaveChangesAsync();
+
+            await context.UserRoles.AddAsync(new IdentityUserRole<string>
+            {
+                UserId = taller.Id,
+                RoleId = context.Roles.First(r => r.Name == "Taller").Id
+            });
+        }
+
+        if (!await context.Users.AnyAsync(u => u.Email == "cliente@example.com"))
+        {
+            context.Users.Add(cliente);
+            await context.SaveChangesAsync();
+
+            await context.UserRoles.AddAsync(new IdentityUserRole<string>
+            {
+                UserId = cliente.Id,
+                RoleId = context.Roles.First(r => r.Name == "Cliente").Id
+            });
+        }
+
         await context.SaveChangesAsync();
     }
 }
