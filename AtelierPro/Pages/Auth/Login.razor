@@ -70,14 +70,18 @@
     private string ErrorMessage = string.Empty;
     private bool IsLoading = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Revisar si hay error del login anterior en localStorage
-        var error = await Js.InvokeAsync<string>("localStorage.getItem", "loginError");
-        if (!string.IsNullOrEmpty(error))
+        if (firstRender)
         {
-            ErrorMessage = error;
-            await Js.InvokeAsync<object>("localStorage.removeItem", "loginError");
+            // Revisar si hay error del login anterior en localStorage
+            var error = await Js.InvokeAsync<string>("localStorage.getItem", "loginError");
+            if (!string.IsNullOrEmpty(error))
+            {
+                ErrorMessage = error;
+                await Js.InvokeAsync<object>("localStorage.removeItem", "loginError");
+                StateHasChanged();
+            }
         }
     }
 
