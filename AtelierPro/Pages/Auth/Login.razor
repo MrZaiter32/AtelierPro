@@ -1,8 +1,6 @@
 @page "/auth/login"
-@using Microsoft.AspNetCore.Identity
-@using AtelierPro.Data
-@inject SignInManager<ApplicationUser> SignInManager
 @inject NavigationManager NavigationManager
+@inject IJSRuntime Js
 
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -72,6 +70,17 @@
     private string ErrorMessage = string.Empty;
     private bool IsLoading = false;
 
+    protected override async Task OnInitializedAsync()
+    {
+        // Revisar si hay error del login anterior en localStorage
+        var error = await Js.InvokeAsync<string>("localStorage.getItem", "loginError");
+        if (!string.IsNullOrEmpty(error))
+        {
+            ErrorMessage = error;
+            await Js.InvokeAsync<object>("localStorage.removeItem", "loginError");
+        }
+    }
+
     private async Task HandleLogin()
     {
         IsLoading = true;
@@ -79,31 +88,13 @@
 
         try
         {
-            var result = await SignInManager.PasswordSignInAsync(
-                Email,
-                Password,
-                RememberMe,
-                lockoutOnFailure: true);
-
-            if (result.Succeeded)
-            {
-                NavigationManager.NavigateTo("/", forceLoad: true);
-            }
-            else if (result.IsLockedOut)
-            {
-                ErrorMessage = "La cuenta ha sido bloqueada por demasiados intentos fallidos.";
-            }
-            else
-            {
-                ErrorMessage = "Correo o contraseña inválidos.";
-            }
+            // Crear query string con credenciales y redirigir a un endpoint que maneje el login
+            var queryParams = $"?email={Uri.EscapeDataString(Email)}&password={Uri.EscapeDataString(Password)}&rememberMe={RememberMe}";
+            NavigationManager.NavigateTo($"/api-auth/login{queryParams}", forceLoad: true);
         }
         catch (Exception ex)
         {
             ErrorMessage = $"Error: {ex.Message}";
-        }
-        finally
-        {
             IsLoading = false;
         }
     }

@@ -1,7 +1,4 @@
 @page "/auth/logout"
-@using Microsoft.AspNetCore.Identity
-@using AtelierPro.Data
-@inject SignInManager<ApplicationUser> SignInManager
 @inject NavigationManager NavigationManager
 
 <div class="container mt-5">
@@ -37,8 +34,7 @@
     private async Task ConfirmLogout()
     {
         IsLoading = true;
-        await SignInManager.SignOutAsync();
-        NavigationManager.NavigateTo("/auth/login", forceLoad: true);
+        NavigationManager.NavigateTo("/api-auth/logout", forceLoad: true);
     }
 
     private void Cancel()

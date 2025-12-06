@@ -1,0 +1,205 @@
+@page "/taller/ordenes/{id}"
+@using AtelierPro.Data
+@using AtelierPro.Models
+@using AtelierPro.Services
+@inject TallerService TallerService
+@inject NavigationManager Navigation
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller,Cliente")]
+
+<PageTitle>Detalle de Orden - AtelierPro</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <a href="/taller/ordenes" class="btn btn-outline-secondary btn-sm">
+                <span class="oi oi-arrow-left"></span>
+                Volver
+            </a>
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info mt-3">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Cargando detalles...
+        </div>
+    }
+    else if (error)
+    {
+        <div class="alert alert-danger mt-3">
+            Error al cargar la orden. Intenta más tarde.
+        </div>
+    }
+    else if (orden == null)
+    {
+        <div class="alert alert-warning mt-3">
+            Orden no encontrada.
+        </div>
+    }
+    else
+    {
+        <div class="row mt-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h4 class="mb-0">Orden: @orden.Id.ToString().Substring(0, 8)</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Estado:</strong>
+                                @switch (orden.Estado)
+                                {
+                                    case EstadoOrdenReparacion.Pendiente:
+                                        <span class="badge bg-secondary">Pendiente</span>
+                                        break;
+                                    case EstadoOrdenReparacion.EnCurso:
+                                        <span class="badge bg-info">En Curso</span>
+                                        break;
+                                    case EstadoOrdenReparacion.Completada:
+                                        <span class="badge bg-success">Completada</span>
+                                        break;
+                                    case EstadoOrdenReparacion.Facturada:
+                                        <span class="badge bg-primary">Facturada</span>
+                                        break;
+                                    case EstadoOrdenReparacion.Cancelada:
+                                        <span class="badge bg-danger">Cancelada</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-secondary">@orden.Estado</span>
+                                        break;
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Presupuesto:</strong>
+                                @orden.PresupuestoId.ToString().Substring(0, 8)
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Técnico Asignado:</strong>
+                                @(orden.TecnicoAsignado?.Nombre ?? "-")
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Teléfono:</strong>
+                                @(orden.TecnicoAsignado?.Telefono ?? "-")
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Horas Estimadas:</strong>
+                                @orden.HorasEstimadas
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Horas Reales:</strong>
+                                @orden.HorasReales
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <strong>Observaciones:</strong>
+                                <p class="mt-2 bg-light p-3 rounded">
+                                    @(string.IsNullOrEmpty(orden.Observaciones) ? "-" : orden.Observaciones)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (items != null && items.Count > 0)
+                {
+                    <div class="card mt-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Ítems de la Orden</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Refacción</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio Unit.</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in items)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold">@item.Codigo</div>
+                                                <div class="text-muted small">@item.Descripcion</div>
+                                            </td>
+                                            <td>@item.Cantidad</td>
+                                            <td>@item.PrecioUnitario.ToString("C")</td>
+                                            <td>@(item.Cantidad * item.PrecioUnitario).ToString("C")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-header">
+                        <h5 class="mb-0">Información</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <strong>Creada:</strong><br/>
+                            @orden.FechaCreacion.ToString("dd/MM/yyyy HH:mm")
+                        </p>
+                        <p>
+                            <strong>Inicio:</strong><br/>
+                            @(orden.FechaInicio.HasValue ? orden.FechaInicio.Value.ToString("dd/MM/yyyy HH:mm") : "-")
+                        </p>
+                        <p>
+                            <strong>Fin real:</strong><br/>
+                            @(orden.FechaFinReal.HasValue ? orden.FechaFinReal.Value.ToString("dd/MM/yyyy HH:mm") : "-")
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private OrdenReparacion? orden;
+    private List<ItemOrdenReparacion> items = new();
+    private bool cargando = true;
+    private bool error = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (Guid.TryParse(Id, out var ordenId))
+            {
+                orden = await TallerService.ObtenerOrdenReparacionAsync(ordenId);
+                if (orden != null && orden.Items != null)
+                {
+                    items = orden.Items.ToList();
+                }
+            }
+        }
+        catch
+        {
+            error = true;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}

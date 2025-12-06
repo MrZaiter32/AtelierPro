@@ -1,0 +1,30 @@
+@page "/api-auth/login"
+@using AtelierPro.Pages.Auth
+@model ApiAuthLoginModel
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Procesando login...</title>
+    <script>
+        // Si hay error, redirigir de vuelta a login con mensaje
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <text>
+            localStorage.setItem('loginError', '@Html.Raw(Model.ErrorMessage)');
+            window.location.href = '/auth/login';
+            </text>
+        }
+        else
+        {
+            <text>
+            // Login exitoso, redirigir a home
+            window.location.href = '@(Model.ReturnUrl ?? "/")';
+            </text>
+        }
+    </script>
+</head>
+<body>
+    <p>Procesando login...</p>
+</body>
+</html>

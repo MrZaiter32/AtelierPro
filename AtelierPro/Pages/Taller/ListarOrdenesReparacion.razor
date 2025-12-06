@@ -1,0 +1,86 @@
+@page "/taller/ordenes"
+@using AtelierPro.Models
+@using AtelierPro.Services
+@inject TallerService TallerService
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller,Cliente")]
+
+<PageTitle>Órdenes de Reparación - AtelierPro</PageTitle>
+
+<div class="container-fluid mt-4">
+    <h1><span class="oi oi-wrench me-2"></span>Órdenes de Reparación</h1>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info">Cargando...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+    else if (ordenes?.Any() != true)
+    {
+        <div class="alert alert-warning">Sin órdenes</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Presupuesto</th>
+                        <th>Estado</th>
+                        <th>Técnico</th>
+                        <th>Horas Est.</th>
+                        <th>Horas Real.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var orden in ordenes)
+                    {
+                        <tr>
+                            <td>@orden.Id.ToString().Substring(0, 8)</td>
+                            <td>@orden.PresupuestoId.ToString().Substring(0, 8)</td>
+                            <td><span class="badge @GetBadgeClass(orden.Estado)">@orden.Estado</span></td>
+                            <td>@(orden.TecnicoAsignado?.Nombre ?? "Sin asignar")</td>
+                            <td>@orden.HorasEstimadas</td>
+                            <td>@orden.HorasReales</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<OrdenReparacion>? ordenes;
+    private bool cargando = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            ordenes = (await TallerService.ObtenerOrdenesReparacionAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private string GetBadgeClass(EstadoOrdenReparacion estado) => estado switch
+    {
+        EstadoOrdenReparacion.Pendiente => "bg-secondary",
+        EstadoOrdenReparacion.EnCurso => "bg-info",
+        EstadoOrdenReparacion.Completada => "bg-success",
+        EstadoOrdenReparacion.Facturada => "bg-primary",
+        EstadoOrdenReparacion.Cancelada => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

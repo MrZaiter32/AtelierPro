@@ -1,0 +1,90 @@
+@page "/compras/proveedores"
+@using AtelierPro.Models
+@using AtelierPro.Services
+@inject ComprasService ComprasService
+@attribute [Authorize(Roles = "Admin,Finanzas")]
+
+<PageTitle>Proveedores - AtelierPro</PageTitle>
+
+<div class="container-fluid mt-4">
+    <h1><span class="oi oi-truck me-2"></span>Proveedores</h1>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info">Cargando...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+    else if (proveedores?.Any() != true)
+    {
+        <div class="alert alert-warning">Sin proveedores</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>RFC</th>
+                        <th>Razón Social</th>
+                        <th>Email</th>
+                        <th>Teléfono</th>
+                        <th>Calificación</th>
+                        <th>Términos Pago</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var prov in proveedores)
+                    {
+                        <tr>
+                            <td><strong>@prov.Rfc</strong></td>
+                            <td>@prov.RazonSocial</td>
+                            <td>@prov.Email</td>
+                            <td>@prov.Telefono</td>
+                            <td>
+                                <div class="rating">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        @if (i <= (int)prov.CalificacionPromedio)
+                                        {
+                                            <span class="oi oi-star" style="color: gold;"></span>
+                                        }
+                                        else
+                                        {
+                                            <span class="oi oi-star" style="opacity: 0.3;"></span>
+                                        }
+                                    }
+                                </div>
+                            </td>
+                            <td>@prov.CondicionesPago</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Proveedor>? proveedores;
+    private bool cargando = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            proveedores = (await ComprasService.ObtenerProveedoresAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}

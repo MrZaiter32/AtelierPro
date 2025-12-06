@@ -1,0 +1,116 @@
+@page "/almacen/movimientos"
+@using AtelierPro.Data
+@using AtelierPro.Models
+@using AtelierPro.Services
+@using Microsoft.EntityFrameworkCore
+@inject AlmacenService AlmacenService
+@inject AtelierProDbContext Db
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
+
+<PageTitle>Registrar Movimiento - AtelierPro</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>
+                <span class="oi oi-arrow-right"></span>
+                Movimientos de Inventario
+            </h2>
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Cargando movimientos...
+        </div>
+    }
+    else if (error)
+    {
+        <div class="alert alert-danger">
+            Error al cargar los movimientos. Intenta más tarde.
+        </div>
+    }
+    else if (movimientos == null || movimientos.Count == 0)
+    {
+        <div class="alert alert-warning">
+            No hay movimientos registrados.
+        </div>
+    }
+    else
+    {
+        <table class="table table-sm table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Refacción</th>
+                    <th>Tipo Movimiento</th>
+                    <th>Cantidad</th>
+                    <th>Responsable</th>
+                    <th>Razón</th>
+                    <th>Stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var movimiento in movimientos)
+                {
+                    <tr>
+                        <td>@movimiento.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@movimiento.Refaccion?.Nombre</td>
+                        <td>
+                            @switch (movimiento.Tipo)
+                            {
+                                case TipoMovimientoInventario.Entrada:
+                                    <span class="badge bg-success">Entrada</span>
+                                    break;
+                                case TipoMovimientoInventario.Salida:
+                                    <span class="badge bg-warning text-dark">Salida</span>
+                                    break;
+                                case TipoMovimientoInventario.Ajuste:
+                                    <span class="badge bg-info">Ajuste</span>
+                                    break;
+                                case TipoMovimientoInventario.Devolucion:
+                                    <span class="badge bg-primary">Devolución</span>
+                                    break;
+                                default:
+                                    <span class="badge bg-secondary">@movimiento.Tipo</span>
+                                    break;
+                            }
+                        </td>
+                        <td>@movimiento.Cantidad</td>
+                        <td>@(string.IsNullOrEmpty(movimiento.ResponsableUsuarioId) ? "-" : movimiento.ResponsableUsuarioId)</td>
+                        <td>@(string.IsNullOrEmpty(movimiento.Razon) ? "-" : movimiento.Razon)</td>
+                        <td class="text-muted small">@movimiento.StockAnterior → @movimiento.StockPosterior</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<MovimientoInventario> movimientos = new();
+    private bool cargando = true;
+    private bool error = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Historial general: si se requiere se podría filtrar por refacción en el futuro
+            movimientos = await Db.MovimientosInventario
+                .Include(m => m.Refaccion)
+                .OrderByDescending(m => m.Fecha)
+                .ToListAsync();
+        }
+        catch
+        {
+            error = true;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}

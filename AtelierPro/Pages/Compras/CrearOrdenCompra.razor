@@ -1,0 +1,142 @@
+@page "/compras/crear-orden"
+@using System.Linq
+@using AtelierPro.Models
+@using AtelierPro.Services
+@attribute [Authorize(Roles = "Admin,Finanzas")]
+@inject ComprasService ComprasService
+
+<PageTitle>Crear Orden de Compra - AtelierPro</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>
+                <span class="oi oi-plus"></span>
+                Crear Orden de Compra (MVP lecturas)
+            </h2>
+            <p class="text-muted">Versión simplificada: muestra proveedores activos y refacciones para planear la orden. La creación interactiva se completará en la siguiente iteración.</p>
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Cargando datos...
+        </div>
+    }
+    else if (error)
+    {
+        <div class="alert alert-danger">
+            No se pudieron cargar los datos base. Intenta más tarde.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <strong>Proveedores activos</strong>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Razón Social</th>
+                                    <th>Calificación</th>
+                                    <th>Condiciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (proveedores.Count == 0)
+                                {
+                                    <tr><td colspan="3" class="text-center text-muted">Sin proveedores</td></tr>
+                                }
+                                else
+                                {
+                                    @foreach (var prov in proveedores)
+                                    {
+                                        <tr>
+                                            <td>@prov.RazonSocial</td>
+                                            <td>@prov.CalificacionPromedio.ToString("0.0") ★</td>
+                                            <td>@prov.CondicionesPago</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <strong>Refacciones</strong>
+                        <span class="badge bg-secondary">@refacciones.Count disponibles</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>SKU</th>
+                                    <th>Nombre</th>
+                                    <th>Stock</th>
+                                    <th>Precio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (refacciones.Count == 0)
+                                {
+                                    <tr><td colspan="4" class="text-center text-muted">Sin refacciones</td></tr>
+                                }
+                                else
+                                {
+                                    @foreach (var r in refacciones.Take(15))
+                                    {
+                                        <tr>
+                                            <td>@r.Sku</td>
+                                            <td>@r.Nombre</td>
+                                            <td>@r.StockActual</td>
+                                            <td>@r.PrecioVenta.ToString("C")</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                        @if (refacciones.Count > 15)
+                        {
+                            <div class="p-2 text-muted small">Mostrando 15 de @refacciones.Count</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Proveedor> proveedores = new();
+    private List<Refaccion> refacciones = new();
+    private bool cargando = true;
+    private bool error = false;
+
+    [Inject] private Services.AlmacenService AlmacenService { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            proveedores = (await ComprasService.ObtenerProveedoresAsync(soloActivos: true)).ToList();
+            refacciones = (await AlmacenService.ObtenerRefaccionesAsync()).ToList();
+        }
+        catch
+        {
+            error = true;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}

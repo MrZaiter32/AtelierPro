@@ -1,0 +1,87 @@
+@page "/almacen/refacciones"
+@using AtelierPro.Models
+@using AtelierPro.Services
+@inject AlmacenService AlmacenService
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
+
+<PageTitle>Refacciones - AtelierPro</PageTitle>
+
+<div class="container-fluid mt-4">
+    <h1><span class="oi oi-box me-2"></span>Refacciones</h1>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info">Cargando...</div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+    else if (refacciones?.Any() != true)
+    {
+        <div class="alert alert-warning">Sin refacciones</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>SKU</th>
+                        <th>Nombre</th>
+                        <th>Stock Actual</th>
+                        <th>Stock Mín.</th>
+                        <th>Stock Máx.</th>
+                        <th>Precio Venta</th>
+                        <th>Categoría</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var refaccion in refacciones)
+                    {
+                        <tr>
+                            <td><strong>@refaccion.Sku</strong></td>
+                            <td>@refaccion.Nombre</td>
+                            <td>
+                                @if (refaccion.StockActual < refaccion.StockMinimo)
+                                {
+                                    <span class="badge bg-danger">@refaccion.StockActual</span>
+                                }
+                                else
+                                {
+                                    <span>@refaccion.StockActual</span>
+                                }
+                            </td>
+                            <td>@refaccion.StockMinimo</td>
+                            <td>@refaccion.StockMaximo</td>
+                            <td>@refaccion.PrecioVenta.ToString("C")</td>
+                            <td>@refaccion.Categoria</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Refaccion>? refacciones;
+    private bool cargando = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            refacciones = (await AlmacenService.ObtenerRefaccionesAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}

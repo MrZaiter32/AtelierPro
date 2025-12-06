@@ -84,11 +84,13 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-// Agregar middleware de autenticación y autorización
+// IMPORTANTE: Authentication y Authorization DEBEN estar antes de endpoints
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers(); // Mapear los endpoints de API
+// Mapear API controllers primero
+app.MapControllers();
+// Luego Blazor
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 

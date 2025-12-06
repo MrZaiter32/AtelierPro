@@ -1,0 +1,107 @@
+@page "/compras/registro"
+@using System.Linq
+@using AtelierPro.Models
+@using AtelierPro.Services
+@attribute [Authorize(Roles = "Admin,Finanzas")]
+@inject ComprasService ComprasService
+
+<PageTitle>Registro de Requisiciones - AtelierPro</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>
+                <span class="oi oi-book"></span>
+                Registro de Requisiciones
+            </h2>
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Cargando requisiciones...
+        </div>
+    }
+    else if (error)
+    {
+        <div class="alert alert-danger">
+            Error al cargar requisiciones. Intenta más tarde.
+        </div>
+    }
+    else if (requisiciones == null || requisiciones.Count == 0)
+    {
+        <div class="alert alert-warning">
+            No hay requisiciones registradas.
+        </div>
+    }
+    else
+    {
+        <table class="table table-sm table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Número</th>
+                    <th>Estado</th>
+                    <th>Solicitante</th>
+                    <th>Aprobador</th>
+                    <th>Fecha</th>
+                    <th>Ítems</th>
+                    <th>Justificación</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var req in requisiciones)
+                {
+                    <tr>
+                        <td>@req.Numero</td>
+                        <td>
+                            @switch (req.Estado)
+                            {
+                                case "Pendiente":
+                                    <span class="badge bg-secondary">Pendiente</span>
+                                    break;
+                                case "Aprobada":
+                                    <span class="badge bg-success">Aprobada</span>
+                                    break;
+                                case "Rechazada":
+                                    <span class="badge bg-danger">Rechazada</span>
+                                    break;
+                                default:
+                                    <span class="badge bg-secondary">@req.Estado</span>
+                                    break;
+                            }
+                        </td>
+                        <td>@(string.IsNullOrEmpty(req.SolicitanteUsuarioId) ? "-" : req.SolicitanteUsuarioId)</td>
+                        <td>@(string.IsNullOrEmpty(req.AprobadorUsuarioId) ? "-" : req.AprobadorUsuarioId)</td>
+                        <td>@req.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                        <td><span class="badge bg-light text-dark">@req.Items?.Count ?? 0 ítems</span></td>
+                        <td class="text-muted text-truncate" style="max-width:200px;">@(string.IsNullOrEmpty(req.Justificacion) ? "-" : req.Justificacion)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<Requisicion> requisiciones = new();
+    private bool cargando = true;
+    private bool error = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            requisiciones = (await ComprasService.ObtenerRequisicionesAsync()).ToList();
+        }
+        catch
+        {
+            error = true;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}
