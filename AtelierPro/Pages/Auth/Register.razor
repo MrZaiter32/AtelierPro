@@ -1,5 +1,4 @@
 @page "/auth/register"
-@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Identity
 @using AtelierPro.Data
 @inject UserManager<ApplicationUser> UserManager
@@ -34,54 +33,47 @@
                         </div>
                     }
 
-                    <EditForm Model="RegisterModel" OnValidSubmit="HandleRegister">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary />
-
+                    <form @onsubmit="HandleRegister">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="nombre" class="form-label">Nombre</label>
-                                <InputText id="nombre" @bind-Value="RegisterModel.Nombre" class="form-control" placeholder="Juan" />
-                                <ValidationMessage For="@(() => RegisterModel.Nombre)" />
+                                <input type="text" id="nombre" class="form-control" placeholder="Juan" 
+                                       @bind="Nombre" required />
                             </div>
 
                             <div class="col-md-6 mb-3">
                                 <label for="apellido" class="form-label">Apellido</label>
-                                <InputText id="apellido" @bind-Value="RegisterModel.Apellido" class="form-control" placeholder="García" />
-                                <ValidationMessage For="@(() => RegisterModel.Apellido)" />
+                                <input type="text" id="apellido" class="form-control" placeholder="García" 
+                                       @bind="Apellido" required />
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="email" class="form-label">Correo Electrónico</label>
-                            <InputText id="email" @bind-Value="RegisterModel.Email" class="form-control" placeholder="usuario@atelierpro.com" />
-                            <ValidationMessage For="@(() => RegisterModel.Email)" />
+                            <input type="email" id="email" class="form-control" placeholder="usuario@atelierpro.com" 
+                                   @bind="Email" required />
                         </div>
 
                         <div class="mb-3">
-                            <label for="telefono" class="form-label">Teléfono</label>
-                            <InputText id="telefono" @bind-Value="RegisterModel.Telefono" class="form-control" placeholder="+55 1234567890" />
-                            <ValidationMessage For="@(() => RegisterModel.Telefono)" />
+                            <label for="telefono" class="form-label">Teléfono (opcional)</label>
+                            <input type="tel" id="telefono" class="form-control" placeholder="+55 1234567890" 
+                                   @bind="Telefono" />
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="password" class="form-label">Contraseña</label>
-                                <InputPassword @bind-Value="RegisterModel.Password" class="form-control" placeholder="Min. 8 caracteres" />
-                                <ValidationMessage For="@(() => RegisterModel.Password)" />
+                                <input type="password" id="password" class="form-control" placeholder="Min. 8 caracteres" 
+                                       @bind="Password" required />
                                 <small class="form-text text-muted d-block mt-2">
-                                    Requerimientos:
-                                    <ul class="mb-0 ps-3">
-                                        <li>Al menos 8 caracteres</li>
-                                        <li>Incluir mayúscula, minúscula y número</li>
-                                    </ul>
+                                    Mín. 8 caracteres, 1 mayúscula, 1 minúscula, 1 número
                                 </small>
                             </div>
 
                             <div class="col-md-6 mb-3">
                                 <label for="confirmPassword" class="form-label">Confirmar Contraseña</label>
-                                <InputPassword @bind-Value="RegisterModel.ConfirmPassword" class="form-control" placeholder="Confirme su contraseña" />
-                                <ValidationMessage For="@(() => RegisterModel.ConfirmPassword)" />
+                                <input type="password" id="confirmPassword" class="form-control" placeholder="Confirme su contraseña" 
+                                       @bind="ConfirmPassword" required />
                             </div>
                         </div>
 
@@ -96,7 +88,7 @@
                                 <span>Registrarse</span>
                             }
                         </button>
-                    </EditForm>
+                    </form>
 
                     <hr />
 
@@ -110,35 +102,15 @@
 </div>
 
 @code {
-    private RegisterRequest RegisterModel = new();
+    private string Nombre = string.Empty;
+    private string Apellido = string.Empty;
+    private string Email = string.Empty;
+    private string Telefono = string.Empty;
+    private string Password = string.Empty;
+    private string ConfirmPassword = string.Empty;
     private string ErrorMessage = string.Empty;
     private List<string> Errors = new();
     private bool IsLoading = false;
-
-    private class RegisterRequest
-    {
-        [Required(ErrorMessage = "El nombre es requerido")]
-        [StringLength(50)]
-        public string Nombre { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "El apellido es requerido")]
-        [StringLength(50)]
-        public string Apellido { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "El correo es requerido")]
-        [EmailAddress(ErrorMessage = "Correo inválido")]
-        public string Email { get; set; } = string.Empty;
-
-        [Phone(ErrorMessage = "Teléfono inválido")]
-        public string Telefono { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "La contraseña es requerida")]
-        [StringLength(100, MinimumLength = 8, ErrorMessage = "La contraseña debe tener entre 8 y 100 caracteres")]
-        public string Password { get; set; } = string.Empty;
-
-        [Compare("Password", ErrorMessage = "Las contraseñas no coinciden")]
-        public string ConfirmPassword { get; set; } = string.Empty;
-    }
 
     private async Task HandleRegister()
     {
@@ -148,22 +120,26 @@
 
         try
         {
+            if (Password != ConfirmPassword)
+            {
+                ErrorMessage = "Las contraseñas no coinciden.";
+                IsLoading = false;
+                return;
+            }
+
             var user = new ApplicationUser
             {
-                UserName = RegisterModel.Email,
-                Email = RegisterModel.Email,
-                NombreCompleto = $"{RegisterModel.Nombre} {RegisterModel.Apellido}",
-                Telefono = RegisterModel.Telefono
+                UserName = Email,
+                Email = Email,
+                NombreCompleto = $"{Nombre} {Apellido}",
+                Telefono = Telefono
             };
 
-            var result = await UserManager.CreateAsync(user, RegisterModel.Password);
+            var result = await UserManager.CreateAsync(user, Password);
 
             if (result.Succeeded)
             {
-                // Asignar rol de Cliente por defecto
                 await UserManager.AddToRoleAsync(user, "Cliente");
-
-                // Iniciar sesión automático
                 await SignInManager.SignInAsync(user, isPersistent: false);
                 NavigationManager.NavigateTo("/", forceLoad: true);
             }
@@ -177,7 +153,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Error al registrarse: {ex.Message}";
+            ErrorMessage = $"Error: {ex.Message}";
         }
         finally
         {

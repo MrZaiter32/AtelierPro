@@ -3,6 +3,7 @@ using System;
 using AtelierPro.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AtelierPro.Migrations
 {
     [DbContext(typeof(AtelierProDbContext))]
-    partial class AtelierProDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251206132451_AddFase1Models")]
+    partial class AddFase1Models
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.36");

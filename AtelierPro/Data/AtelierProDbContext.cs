@@ -14,44 +14,70 @@ public class AtelierProDbContext : IdentityDbContext<ApplicationUser, Applicatio
     {
     }
 
-    // Módulo Central: Presupuestos y Siniestros
+    #region Módulo Central: Presupuestos
     public DbSet<Presupuesto> Presupuestos => Set<Presupuesto>();
     public DbSet<ItemPresupuesto> ItemsPresupuesto => Set<ItemPresupuesto>();
     public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<Tarifa> Tarifas => Set<Tarifa>();
+    #endregion
 
-    // Módulo CRM
+    #region Módulo CRM
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<Interaccion> Interacciones => Set<Interaccion>();
+    #endregion
 
-    // Módulo de Calidad
+    #region Módulo de Calidad
     public DbSet<ChecklistControl> ChecklistsControl => Set<ChecklistControl>();
     public DbSet<ReclamoGarantia> ReclamosGarantia => Set<ReclamoGarantia>();
+    #endregion
 
-    // Módulo de Almacén e Inventario
-    public DbSet<Refaccion> Refacciones => Set<Refaccion>();
-
-    // Módulo de Compras
-    public DbSet<OrdenCompra> OrdenesCompra => Set<OrdenCompra>();
-
-    // Módulo de Taller
+    #region Módulo de Taller (FASE 1)
+    public DbSet<Tecnico> Tecnicos => Set<Tecnico>();
     public DbSet<OrdenReparacion> OrdenesReparacion => Set<OrdenReparacion>();
+    public DbSet<ItemOrdenReparacion> ItemsOrdenReparacion => Set<ItemOrdenReparacion>();
+    #endregion
 
-    // Módulo de Activos
+    #region Módulo de Almacén e Inventario (FASE 1)
+    public DbSet<Refaccion> Refacciones => Set<Refaccion>();
+    public DbSet<MovimientoInventario> MovimientosInventario => Set<MovimientoInventario>();
+    public DbSet<CuentoFisico> CuentosFisicos => Set<CuentoFisico>();
+    public DbSet<CuentoFisicoDetalle> DetallesCuentoFisico => Set<CuentoFisicoDetalle>();
+    public DbSet<Proveedor> Proveedores => Set<Proveedor>();
+    #endregion
+
+    #region Módulo de Compras (FASE 1)
+    public DbSet<OrdenCompra> OrdenesCompra => Set<OrdenCompra>();
+    public DbSet<ItemOrdenCompra> ItemsOrdenCompra => Set<ItemOrdenCompra>();
+    public DbSet<Requisicion> Requisiciones => Set<Requisicion>();
+    public DbSet<ItemRequisicion> ItemsRequisicion => Set<ItemRequisicion>();
+    #endregion
+
+    #region Módulo de Servicios Adicionales (FASE 1)
+    public DbSet<OrdenServicio> OrdenesServicio => Set<OrdenServicio>();
+    public DbSet<FotoServicio> FotosServicio => Set<FotoServicio>();
+    #endregion
+
+    #region Módulo de Activos
     public DbSet<Activo> Activos => Set<Activo>();
     public DbSet<PlanMantenimiento> PlanesMantenimiento => Set<PlanMantenimiento>();
+    #endregion
 
-    // Módulo de Movilidad
+    #region Módulo de Movilidad
     public DbSet<CapturaFotografica> CapturassFotograficas => Set<CapturaFotografica>();
     public DbSet<FirmaDigital> FirmasDigitales => Set<FirmaDigital>();
+    #endregion
 
-    // Módulo Financiero
+    #region Módulo Financiero
     public DbSet<FacturaCliente> FacturasClientes => Set<FacturaCliente>();
     public DbSet<CuentaPorCobrar> CuentasPorCobrar => Set<CuentaPorCobrar>();
     public DbSet<Transaccion> Transacciones => Set<Transaccion>();
+    #endregion
 
-    // Módulo de RR.HH.
+    #region Módulo de RR.HH.
     public DbSet<Empleado> Empleados => Set<Empleado>();
+    #endregion
+
+    #region Model Configuration
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,7 +87,7 @@ public class AtelierProDbContext : IdentityDbContext<ApplicationUser, Applicatio
         modelBuilder.Entity<Presupuesto>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Ignore(e => e.Subtotal); // Propiedad calculada
+            entity.Ignore(e => e.Subtotal);
             entity.Property(e => e.IvaAplicado).HasPrecision(18, 2);
             entity.Property(e => e.TotalFinal).HasPrecision(18, 2);
             entity.HasOne(e => e.Vehiculo)
@@ -115,24 +141,157 @@ public class AtelierProDbContext : IdentityDbContext<ApplicationUser, Applicatio
             entity.HasKey(e => e.Id);
         });
 
-        // Configuración de Refaccion
-        modelBuilder.Entity<Refaccion>(entity =>
+        // Configuración de Tecnico (FASE 1)
+        modelBuilder.Entity<Tecnico>(entity =>
         {
-            entity.HasKey(e => e.Sku);
-            entity.Property(e => e.CostoPromedio).HasPrecision(18, 2);
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CostoPorHora).HasPrecision(18, 2);
+            entity.Property(e => e.HorasPorSemana).HasPrecision(5, 2);
+            entity.Ignore(e => e.NombreCompleto);
+            entity.HasMany(e => e.OrdenesAsignadas)
+                .WithOne(o => o.TecnicoAsignado)
+                .HasForeignKey(o => o.TecnicoId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
-        // Configuración de OrdenCompra
+        // Configuración de OrdenReparacion (FASE 1)
+        modelBuilder.Entity<OrdenReparacion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.HorasEstimadas).HasColumnType("decimal(5,2)");
+            entity.Property(e => e.HorasReales).HasColumnType("decimal(5,2)");
+            entity.HasMany(e => e.Items)
+                .WithOne()
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.MovimientosInventario)
+                .WithOne()
+                .HasForeignKey(m => m.OrdenReparacionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configuración de ItemOrdenReparacion (FASE 1)
+        modelBuilder.Entity<ItemOrdenReparacion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TiempoEstimadoHoras).HasColumnType("decimal(5,2)");
+            entity.Property(e => e.TiempoRealHoras).HasColumnType("decimal(5,2)");
+            entity.Property(e => e.PrecioUnitario).HasPrecision(18, 2);
+        });
+
+        // Configuración de Refaccion (FASE 1)
+        modelBuilder.Entity<Refaccion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Sku).IsUnique();
+            entity.Property(e => e.CostoPromedio).HasPrecision(18, 2);
+            entity.Property(e => e.PrecioVenta).HasPrecision(18, 2);
+            entity.HasMany(e => e.Movimientos)
+                .WithOne(m => m.Refaccion)
+                .HasForeignKey(m => m.RefaccionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(e => e.DetallesCuentos)
+                .WithOne(d => d.Refaccion)
+                .HasForeignKey(d => d.RefaccionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configuración de MovimientoInventario (FASE 1)
+        modelBuilder.Entity<MovimientoInventario>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Refaccion)
+                .WithMany(r => r.Movimientos)
+                .HasForeignKey(e => e.RefaccionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configuración de CuentoFisico (FASE 1)
+        modelBuilder.Entity<CuentoFisico>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasMany(e => e.Detalles)
+                .WithOne()
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configuración de CuentoFisicoDetalle (FASE 1)
+        modelBuilder.Entity<CuentoFisicoDetalle>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Ignore(e => e.Diferencia);
+            entity.HasOne(e => e.Refaccion)
+                .WithMany(r => r.DetallesCuentos)
+                .HasForeignKey(e => e.RefaccionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configuración de Proveedor (FASE 1)
+        modelBuilder.Entity<Proveedor>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Rfc).IsUnique();
+            entity.Property(e => e.CalificacionPromedio).HasPrecision(3, 1);
+            entity.HasMany(e => e.OrdenesCompra)
+                .WithOne(o => o.Proveedor)
+                .HasForeignKey(o => o.ProveedorId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configuración de OrdenCompra (FASE 1)
         modelBuilder.Entity<OrdenCompra>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Numero).IsUnique();
+            entity.Property(e => e.Subtotal).HasPrecision(18, 2);
+            entity.Property(e => e.Iva).HasPrecision(18, 2);
+            entity.Property(e => e.Total).HasPrecision(18, 2);
             entity.HasMany(e => e.Items)
                 .WithOne()
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Configuración de OrdenReparacion
-        modelBuilder.Entity<OrdenReparacion>(entity =>
+        // Configuración de ItemOrdenCompra (FASE 1)
+        modelBuilder.Entity<ItemOrdenCompra>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PrecioUnitario).HasPrecision(18, 2);
+            entity.Ignore(e => e.Subtotal);
+            entity.Ignore(e => e.Completado);
+            entity.HasOne(e => e.Refaccion)
+                .WithMany()
+                .HasForeignKey(e => e.RefaccionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configuración de Requisicion (FASE 1)
+        modelBuilder.Entity<Requisicion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Numero).IsUnique();
+            entity.HasMany(e => e.Items)
+                .WithOne()
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configuración de ItemRequisicion (FASE 1)
+        modelBuilder.Entity<ItemRequisicion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PrecioEstimado).HasPrecision(18, 2);
+        });
+
+        // Configuración de OrdenServicio (FASE 1)
+        modelBuilder.Entity<OrdenServicio>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Precio).HasPrecision(18, 2);
+            entity.HasMany(e => e.Fotos)
+                .WithOne()
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configuración de FotoServicio (FASE 1)
+        modelBuilder.Entity<FotoServicio>(entity =>
         {
             entity.HasKey(e => e.Id);
         });
@@ -203,4 +362,6 @@ public class AtelierProDbContext : IdentityDbContext<ApplicationUser, Applicatio
             entity.HasKey(e => e.Id);
         });
     }
+
+    #endregion
 }

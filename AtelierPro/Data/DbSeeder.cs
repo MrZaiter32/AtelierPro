@@ -101,28 +101,99 @@ public static class DbSeeder
         };
         context.Clientes.Add(cliente);
 
-        // Crear refacciones
-        context.Refacciones.AddRange(new[]
+        // Crear técnico
+        var tecnico = new Tecnico
         {
-            new Refaccion { Sku = "PUERT-DEL", StockActual = 0, StockMinimo = 1, CostoPromedio = 95m },
-            new Refaccion { Sku = "PARAG-GTI", StockActual = 3, StockMinimo = 2, CostoPromedio = 70m }
-        });
+            Nombre = "Luis",
+            Apellido = "Gómez",
+            Especialidad = "Mecánica General",
+            Telefono = "555-1234",
+            Email = "luis@atelierpro.com",
+            Activo = true,
+            CostoPorHora = 250m,
+            HorasPorSemana = 40m
+        };
+        context.Tecnicos.Add(tecnico);
+
+        // Crear refacciones
+        var refaccion1 = new Refaccion 
+        { 
+            Sku = "PUERT-DEL", 
+            Nombre = "Puerta Delantera",
+            Descripcion = "Puerta delantera derecha",
+            StockActual = 0, 
+            StockMinimo = 1, 
+            StockMaximo = 5,
+            CostoPromedio = 95m,
+            PrecioVenta = 150m,
+            Categoria = "Carrocería",
+            Ubicacion = "A1-01"
+        };
+        var refaccion2 = new Refaccion 
+        { 
+            Sku = "PARAG-GTI", 
+            Nombre = "Parabrisas GTI",
+            Descripcion = "Parabrisas para Golf GTI",
+            StockActual = 3, 
+            StockMinimo = 2, 
+            StockMaximo = 10,
+            CostoPromedio = 70m,
+            PrecioVenta = 120m,
+            Categoria = "Vidrios",
+            Ubicacion = "A2-03"
+        };
+        context.Refacciones.AddRange(new[] { refaccion1, refaccion2 });
+
+        // Crear proveedor
+        var proveedor = new Proveedor
+        {
+            RazonSocial = "Autopartes Express",
+            Rfc = "AAE-100101-ABC",
+            Telefono = "555-9999",
+            Email = "ventas@autopartesexpress.com",
+            Direccion = "Calle Principal 123, Ciudad",
+            ContactoPrincipal = "Juan Pérez",
+            CondicionesPago = "Crédito 30 días",
+            Activo = true
+        };
+        context.Proveedores.Add(proveedor);
 
         // Crear orden de compra
         var ordenCompra = new OrdenCompra
         {
-            Proveedor = "Autopartes Express",
-            Items = new List<ItemPresupuesto> { item1 },
-            Estado = "Enviado"
+            ProveedorId = proveedor.Id,
+            Numero = "OC-2024-001",
+            Estado = EstadoOrdenCompra.Enviada,
+            FechaCreacion = DateTime.UtcNow,
+            FechaEnvio = DateTime.UtcNow,
+            Subtotal = 150m,
+            Iva = 24m,
+            Total = 174m
         };
+        var itemOC = new ItemOrdenCompra
+        {
+            OrdenCompraId = ordenCompra.Id,
+            RefaccionId = refaccion1.Id,
+            Cantidad = 1,
+            PrecioUnitario = 95m
+        };
+        ordenCompra.Items.Add(itemOC);
         context.OrdenesCompra.Add(ordenCompra);
 
-        // Crear orden de reparación
+        // Guardar cambios para obtener IDs
+        context.SaveChanges();
+
+        // Ahora crear orden de reparación con referencias válidas
         var ordenReparacion = new OrdenReparacion
         {
-            TecnicoAsignado = "Luis Gómez",
-            Inicio = DateTime.UtcNow.AddHours(-5),
-            HorasReales = 4.2
+            PresupuestoId = presupuesto.Id,
+            TecnicoId = tecnico.Id,
+            Estado = EstadoOrdenReparacion.EnCurso,
+            FechaCreacion = DateTime.UtcNow.AddHours(-5),
+            FechaInicio = DateTime.UtcNow.AddHours(-5),
+            HorasEstimadas = 6m,
+            HorasReales = 4.2m,
+            Prioridad = "Normal"
         };
         context.OrdenesReparacion.Add(ordenReparacion);
 

@@ -52,6 +52,9 @@ builder.Services.AddScoped<ReglaService>();
 builder.Services.AddScoped<PresupuestoService>();
 builder.Services.AddScoped<WorkflowService>();
 builder.Services.AddScoped<ClienteService>();
+builder.Services.AddScoped<TallerService>(); // FASE 1
+builder.Services.AddScoped<AlmacenService>(); // FASE 1
+builder.Services.AddScoped<ComprasService>(); // FASE 1
 
 // Mantener ErpDataService como Singleton solo para demo/seed inicial
 builder.Services.AddSingleton<WeatherForecastService>();
