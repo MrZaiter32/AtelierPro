@@ -3,6 +3,7 @@
 @using System.Text
 @inject HttpClient HttpClient
 @inject IJSRuntime JS
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
 
 <PageTitle>Test de Catálogos</PageTitle>
 

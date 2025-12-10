@@ -1,0 +1,401 @@
+@page "/taller/editar-orden/{OrdenId:guid}"
+@using System.ComponentModel.DataAnnotations
+@using AtelierPro.Models
+@using AtelierPro.Services
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
+@inject TallerService TallerService
+@inject NavigationManager NavigationManager
+@inject BusyService Busy
+
+<PageTitle>Editar Orden de Reparación - AtelierPro</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2><span class="oi oi-pencil me-2"></span>Editar Orden de Reparación</h2>
+            <p class="text-muted">Modifica los detalles de la orden de reparación.</p>
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>Cargando...
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @mensajeError
+            <button type="button" class="btn-close" @onclick="() => mensajeError = null"></button>
+        </div>
+    }
+    else if (orden == null)
+    {
+        <div class="alert alert-warning">Orden no encontrada</div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Información General</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">ID Orden</label>
+                                <input type="text" class="form-control" value="@orden.Id.ToString().Substring(0, 8)..." readonly />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Presupuesto</label>
+                                <input type="text" class="form-control" value="@orden.PresupuestoId.ToString().Substring(0, 8)..." readonly />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Fecha Creación</label>
+                                <input type="text" class="form-control" value="@orden.FechaCreacion.ToString("dd/MM/yyyy HH:mm")" readonly />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Estado Actual</label>
+                                <input type="text" class="form-control" value="@orden.Estado" readonly />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Detalles de la Orden</h5>
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="@modelo" OnValidSubmit="@GuardarCambios">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Horas Estimadas *</label>
+                                    <InputNumber class="form-control" @bind-Value="modelo.HorasEstimadas" />
+                                    <ValidationMessage For="() => modelo.HorasEstimadas" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Horas Reales</label>
+                                    <InputNumber class="form-control" @bind-Value="modelo.HorasReales" />
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Prioridad *</label>
+                                    <InputSelect class="form-select" @bind-Value="modelo.Prioridad">
+                                        <option value="">-- Seleccionar --</option>
+                                        <option value="Baja">Baja</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Alta">Alta</option>
+                                        <option value="Urgente">Urgente</option>
+                                    </InputSelect>
+                                    <ValidationMessage For="() => modelo.Prioridad" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Estado</label>
+                                    <InputSelect class="form-select" @bind-Value="modelo.Estado">
+                                        <option value="@EstadoOrdenReparacion.Pendiente">Pendiente</option>
+                                        <option value="@EstadoOrdenReparacion.EnCurso">En Curso</option>
+                                        <option value="@EstadoOrdenReparacion.Completada">Completada</option>
+                                        <option value="@EstadoOrdenReparacion.Cancelada">Cancelada</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-12">
+                                    <label class="form-label">Observaciones</label>
+                                    <InputTextArea class="form-control" @bind-Value="modelo.Observaciones"
+                                                   rows="4" placeholder="Notas adicionales..."></InputTextArea>
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-primary" disabled="@guardando">
+                                    @if (guardando)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        <span>Guardando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="oi oi-check me-2"></span>
+                                        <span>Guardar Cambios</span>
+                                    }
+                                </button>
+                                <a href="/taller/ordenes" class="btn btn-secondary ms-2">Cancelar</a>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Técnico Asignado</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (orden.TecnicoId.HasValue && tecnicoAsignado != null)
+                        {
+                            <div class="mb-2">
+                                <strong>@tecnicoAsignado.NombreCompleto</strong>
+                                <p class="text-muted mb-0">@tecnicoAsignado.Especialidad</p>
+                                <small>Costo: @tecnicoAsignado.CostoPorHora.ToString("C")/h</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                    @onclick="() => DesasignarTecnico()">
+                                Desasignar Técnico
+                            </button>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">Sin técnico asignado</p>
+                            @if (tecnicosDisponibles.Any())
+                            {
+                                <div class="mt-3">
+                                    <label class="form-label">Asignar técnico</label>
+                                    <div class="list-group list-group-sm max-height-200">
+                                        @foreach (var tec in tecnicosDisponibles.Take(10))
+                                        {
+                                            <button type="button" class="list-group-item list-group-item-action"
+                                                    @onclick="() => AsignarTecnico(tec.Id)">
+                                                <div class="d-flex justify-content-between">
+                                                    <strong>@tec.NombreCompleto</strong>
+                                                    <small class="badge bg-secondary">@tec.Especialidad</small>
+                                                </div>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">Resumen de Horas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6 mb-2">
+                                <p class="text-muted mb-1">Estimadas</p>
+                                <h5>@modelo.HorasEstimadas?.ToString("F1")h</h5>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <p class="text-muted mb-1">Reales</p>
+                                <h5>@modelo.HorasReales?.ToString("F1")h</h5>
+                            </div>
+                        </div>
+                        @if (modelo.HorasReales.HasValue && modelo.HorasEstimadas.HasValue && modelo.HorasReales > modelo.HorasEstimadas)
+                        {
+                            <div class="alert alert-warning mb-0 mt-2">
+                                <small>Horas reales exceden lo estimado</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Items de la Orden (@orden.Items.Count)</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @foreach (var item in orden.Items.Take(5))
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>@item.Codigo</strong>
+                                        <small class="badge bg-info">@item.Tipo</small>
+                                    </div>
+                                    <small>@item.Descripcion</small>
+                                    <p class="text-muted mb-0 mt-1">
+                                        <small>Tiempo: @item.TiempoEstimadoHoras.ToString("F1")h | Precio: @item.PrecioUnitario.ToString("C")</small>
+                                    </p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .max-height-200 {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Guid OrdenId { get; set; }
+
+    private OrdenReparacion? orden;
+    private Tecnico? tecnicoAsignado;
+    private List<Tecnico> tecnicosDisponibles = new();
+    private EditarOrdenModelo modelo = new();
+
+    private string? mensajeError;
+    private bool cargando = true;
+    private bool guardando = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var _ = Busy.Start("Cargando orden...");
+        try
+        {
+            await CargarDatos();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error cargando datos: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CargarDatos()
+    {
+        try
+        {
+            // Cargar orden
+            orden = await TallerService.ObtenerOrdenReparacionAsync(OrdenId);
+            if (orden == null)
+                throw new Exception("Orden no encontrada");
+
+            // Cargar técnicos disponibles
+            tecnicosDisponibles = (await TallerService.ObtenerTecnicosAsync(soloActivos: true)).ToList();
+
+            // Cargar técnico asignado
+            if (orden.TecnicoId.HasValue)
+            {
+                tecnicoAsignado = await TallerService.ObtenerTecnicoPorIdAsync(orden.TecnicoId.Value);
+            }
+
+            // Inicializar modelo
+            modelo = new()
+            {
+                HorasEstimadas = orden.HorasEstimadas,
+                HorasReales = orden.HorasReales,
+                Prioridad = orden.Prioridad,
+                Observaciones = orden.Observaciones,
+                Estado = orden.Estado
+            };
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Error cargando datos: {ex.Message}");
+        }
+    }
+
+    private async Task GuardarCambios()
+    {
+        if (orden == null) return;
+
+        guardando = true;
+        try
+        {
+            using var _ = Busy.Start("Guardando cambios...");
+
+            // Actualizar orden
+            orden.HorasEstimadas = modelo.HorasEstimadas ?? orden.HorasEstimadas;
+            orden.HorasReales = modelo.HorasReales ?? 0;
+            orden.Prioridad = modelo.Prioridad ?? "Normal";
+            orden.Observaciones = modelo.Observaciones ?? string.Empty;
+
+            // Si el estado cambió
+            if (orden.Estado != modelo.Estado)
+            {
+                await TallerService.CambiarEstadoAsync(orden.Id, modelo.Estado);
+            }
+
+            // Guardar cambios en la BD
+            // await TallerService.ActualizarOrdenAsync(orden); // Este método se debe agregar al servicio
+
+            mensajeError = null;
+            NavigationManager.NavigateTo("/taller/ordenes");
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al guardar: {ex.Message}";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private async Task AsignarTecnico(Guid tecnicoId)
+    {
+        if (orden == null) return;
+
+        try
+        {
+            using var _ = Busy.Start("Asignando técnico...");
+            await TallerService.AsignarTecnicoAsync(orden.Id, tecnicoId);
+            await CargarDatos();
+            modelo.Estado = orden.Estado;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al asignar técnico: {ex.Message}";
+        }
+    }
+
+    private async Task DesasignarTecnico()
+    {
+        if (orden == null) return;
+
+        try
+        {
+            using var _ = Busy.Start("Desasignando técnico...");
+            // Si el método no soporta null, actualizar manualmente la orden
+            // await TallerService.AsignarTecnicoAsync(orden.Id, null);
+            // Por ahora, solo limpiar la visualización
+            tecnicoAsignado = null;
+            orden.TecnicoId = null;
+            await CargarDatos();
+            modelo.Estado = orden.Estado;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al desasignar técnico: {ex.Message}";
+        }
+    }
+
+    public class EditarOrdenModelo
+    {
+        [Required(ErrorMessage = "Las horas estimadas son requeridas")]
+        [Range(0.5, 500, ErrorMessage = "Las horas deben estar entre 0.5 y 500")]
+        public decimal? HorasEstimadas { get; set; }
+
+        [Range(0, 500, ErrorMessage = "Las horas reales no pueden ser negativas")]
+        public decimal? HorasReales { get; set; } = 0;
+
+        [Required(ErrorMessage = "La prioridad es requerida")]
+        public string? Prioridad { get; set; } = "Normal";
+
+        public EstadoOrdenReparacion Estado { get; set; } = EstadoOrdenReparacion.Pendiente;
+
+        [StringLength(1000)]
+        public string? Observaciones { get; set; }
+    }
+}

@@ -384,5 +384,136 @@ public class TallerService
         };
     }
 
+    /// <summary>
+    /// Crea una orden de reparación con validación exhaustiva y transaccionalidad.
+    /// Patrón mejorado basado en ComprasService.
+    /// </summary>
+    public async Task<(bool Exitoso, string? Mensaje, Guid? OrdenId)> 
+        CrearOrdenReparacionMejoradaAsync(
+            Guid presupuestoId,
+            Guid? tecnicoId,
+            decimal horasEstimadas,
+            string prioridad = "Normal",
+            string observaciones = "")
+    {
+        try
+        {
+            // ===== VALIDACIÓN 1: Presupuesto válido y aprobado =====
+            if (presupuestoId == Guid.Empty)
+                return (false, "El presupuesto es requerido", null);
+
+            var presupuesto = await _context.Presupuestos
+                .Include(p => p.Cliente)
+                .Include(p => p.Items)
+                .FirstOrDefaultAsync(p => p.Id == presupuestoId);
+
+            if (presupuesto == null)
+                return (false, "Presupuesto no encontrado", null);
+
+            if (presupuesto.Estado != EstadoPresupuesto.Aprobado)
+                return (false, $"El presupuesto debe estar aprobado. Estado actual: {presupuesto.Estado}", null);
+
+            // ===== VALIDACIÓN 2: Técnico (si se proporciona) =====
+            Tecnico? tecnico = null;
+            if (tecnicoId.HasValue && tecnicoId.Value != Guid.Empty)
+            {
+                tecnico = await _context.Tecnicos.FindAsync(tecnicoId.Value);
+                if (tecnico == null)
+                    return (false, "Técnico no encontrado", null);
+
+                if (!tecnico.Activo)
+                    return (false, "El técnico asignado está inactivo", null);
+
+                // Validar disponibilidad (opcional: puede implementarse)
+                if (tecnico.OrdenesAsignadas?.Count >= 10)
+                    _logger.LogWarning("Técnico {tecnico} tiene muchas órdenes asignadas", tecnico.Nombre);
+            }
+
+            // ===== VALIDACIÓN 3: Horas estimadas válidas =====
+            if (horasEstimadas <= 0 || horasEstimadas > 500)
+                return (false, "Las horas estimadas deben estar entre 0.5 y 500", null);
+
+            // ===== VALIDACIÓN 4: Prioridad válida =====
+            var prioridadesValidas = new[] { "Baja", "Normal", "Alta", "Urgente" };
+            if (!prioridadesValidas.Contains(prioridad))
+                return (false, "Prioridad inválida. Válidas: Baja, Normal, Alta, Urgente", null);
+
+            // ===== VALIDACIÓN 5: Items del presupuesto =====
+            if (!presupuesto.Items.Any())
+                return (false, "El presupuesto no tiene items", null);
+
+            _logger.LogInformation(
+                "Creando orden de reparación mejorada | Presupuesto: {presupuestoId} | " +
+                "Técnico: {tecnico} | Horas: {horas} | Prioridad: {prioridad}",
+                presupuestoId, tecnico?.Nombre ?? "No asignado", horasEstimadas, prioridad);
+
+            // ===== CREAR ORDEN CON TRANSACCIÓN =====
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    var orden = new OrdenReparacion
+                    {
+                        Id = Guid.NewGuid(),
+                        PresupuestoId = presupuestoId,
+                        TecnicoId = tecnicoId,
+                        Estado = EstadoOrdenReparacion.Pendiente,
+                        HorasEstimadas = horasEstimadas,
+                        Prioridad = prioridad,
+                        Observaciones = observaciones,
+                        FechaCreacion = DateTime.UtcNow
+                    };
+
+                    // Copiar items del presupuesto a la orden
+                    foreach (var itemPresupuesto in presupuesto.Items)
+                    {
+                        var itemOrden = new ItemOrdenReparacion
+                        {
+                            Id = Guid.NewGuid(),
+                            ItemPresupuestoId = itemPresupuesto.Id,
+                            Codigo = itemPresupuesto.Codigo,
+                            Descripcion = itemPresupuesto.Descripcion,
+                            Tipo = itemPresupuesto.Tipo,
+                            TiempoEstimadoHoras = (decimal)itemPresupuesto.TiempoAsignadoHoras,
+                            PrecioUnitario = itemPresupuesto.PrecioUnitario,
+                            Cantidad = 1
+                        };
+                        orden.Items.Add(itemOrden);
+                    }
+
+                    // Agregar orden a la BD
+                    _context.OrdenesReparacion.Add(orden);
+
+                    // Actualizar estado del presupuesto a "Cerrado" (en taller)
+                    presupuesto.Estado = EstadoPresupuesto.Cerrado;
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation(
+                        "Orden de reparación creada exitosamente | OrdenId: {ordenId} | " +
+                        "PresupuestoId: {presupuestoId} | TecnicoId: {tecnicoId}",
+                        orden.Id, presupuestoId, tecnicoId);
+
+                    return (true, null, orden.Id);
+                }
+                catch (Exception transEx)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(transEx, 
+                        "Error en transacción al crear orden reparación. Rollback ejecutado");
+                    throw;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, 
+                "Error al crear orden de reparación mejorada para presupuesto {presupuestoId}",
+                presupuestoId);
+            return (false, $"Error: {ex.Message}", null);
+        }
+    }
+
     #endregion
 }

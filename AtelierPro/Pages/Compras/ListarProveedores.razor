@@ -2,6 +2,7 @@
 @using AtelierPro.Models
 @using AtelierPro.Services
 @inject ComprasService ComprasService
+@inject BusyService Busy
 @attribute [Authorize(Roles = "Admin,Finanzas")]
 
 <PageTitle>Proveedores - AtelierPro</PageTitle>
@@ -74,6 +75,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = Busy.Start("Cargando proveedores...");
         try
         {
             proveedores = (await ComprasService.ObtenerProveedoresAsync()).ToList();

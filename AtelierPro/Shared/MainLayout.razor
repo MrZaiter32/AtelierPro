@@ -1,22 +1,59 @@
 ﻿@inherits LayoutComponentBase
-@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+
+<MudThemeProvider Theme="_theme" />
+<MudDialogProvider />
+<MudSnackbarProvider MaxDisplayedMessages="5" Position="SnackbarPosition.BottomRight" />
+<BusyOverlay />
 
 <PageTitle>AtelierPro</PageTitle>
 
-<CascadingAuthenticationState>
-    <div class="page">
-        <div class="sidebar">
-            <NavMenu />
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
         </div>
 
-        <main>
-            <div class="top-row px-4">
-                <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
-            </div>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
 
-            <article class="content px-4">
-                @Body
-            </article>
-        </main>
-    </div>
-</CascadingAuthenticationState>
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        Palette = new PaletteLight
+        {
+            Primary = "#0d6efd",
+            Secondary = "#6c757d",
+            Tertiary = "#20c997",
+            Info = "#17a2b8",
+            Success = "#2fb344",
+            Warning = "#f59f00",
+            Error = "#f03e3e",
+            Background = "#f4f6fb",
+            AppbarBackground = "#0b2447",
+            DrawerBackground = "#0f1c30",
+            Surface = "#ffffff",
+            TextPrimary = "#0f172a",
+            TextSecondary = "#4b5563"
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DefaultBorderRadius = "10px",
+            AppbarHeight = "56px",
+            DrawerWidthLeft = "260px"
+        },
+        Typography = new Typography
+        {
+            Default = new Default { FontFamily = new[] { "Inter", "Segoe UI", "sans-serif" } },
+            H4 = new H4 { FontWeight = 600 },
+            Button = new Button { TextTransform = "none", FontWeight = 600 }
+        }
+    };
+}

@@ -1,0 +1,377 @@
+@page "/presupuestos/nuevo"
+@using System.Linq
+@using AtelierPro.Models
+@using AtelierPro.Services
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
+@inject PresupuestoService PresupuestoService
+@inject BusyService Busy
+
+<PageTitle>Crear Presupuesto - AtelierPro</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>
+                <span class="oi oi-plus"></span>
+                Crear Presupuesto
+            </h2>
+            <p class="text-muted">Selecciona cliente, agrega ítems (piezas, mano de obra, pintura) y genera presupuesto con cálculo de IVA.</p>
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Cargando datos...
+        </div>
+    }
+    else if (error)
+    {
+        <div class="alert alert-danger">
+            No se pudieron cargar los datos base. Intenta más tarde.
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(mensajeExito))
+        {
+            <div class="alert alert-success">@mensajeExito</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(mensajeError))
+        {
+            <div class="alert alert-danger">@mensajeError</div>
+        }
+
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>Datos del presupuesto</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Cliente (opcional)</label>
+                                <select class="form-select" @bind="clienteSeleccionado">
+                                    <option value="">-- Sin cliente --</option>
+                                    @foreach (var cli in clientes)
+                                    {
+                                        <option value="@cli.Id">@cli.Nombre</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Placa vehículo</label>
+                                <input class="form-control" @bind="placaVehiculo" placeholder="Ej: ABC-1234" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">VIN (opcional)</label>
+                                <input class="form-control" @bind="vinVehiculo" placeholder="Vehicle ID" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tasa IVA (%)</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" min="0" max="100" class="form-control" @bind="tasaIvaPorcentaje" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <strong>Agregar ítems del presupuesto</strong>
+                        <span class="badge bg-secondary">@tiposItem.Length tipos</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-2">
+                                <label class="form-label">Tipo de ítem</label>
+                                <select class="form-select" @bind="tipoItemSeleccionado">
+                                    @foreach (var tipo in tiposItem)
+                                    {
+                                        <option value="@tipo">@tipo</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Código (opcional)</label>
+                                <input class="form-control" @bind="codigoItem" placeholder="Ref. interna" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Descripción</label>
+                                <input class="form-control" @bind="descripcionItem" placeholder="Ej: Pieza de motor" />
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Cantidad</label>
+                                <input type="number" min="1" class="form-control" @bind="cantidadItem" />
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Horas</label>
+                                <input type="number" step="0.5" min="0" class="form-control" @bind="horasItem" />
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Precio unit.</label>
+                                <input type="number" step="0.01" min="0" class="form-control" @bind="precioItem" />
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100" @onclick="AgregarItem">
+                                    <span class="oi oi-plus me-1"></span> Agregar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-7 mb-3">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <strong>Clientes disponibles</strong>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (clientes.Count == 0)
+                        {
+                            <div class="p-3 text-muted">No hay clientes registrados.</div>
+                        }
+                        else
+                        {
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Historial</th>
+                                        <th>NPS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var cli in clientes)
+                                    {
+                                        <tr class="@(clienteSeleccionado == cli.Id ? "table-primary" : string.Empty)">
+                                            <td>@cli.Nombre</td>
+                                            <td>@(string.IsNullOrWhiteSpace(cli.Historial) ? "Sin historial" : cli.Historial)</td>
+                                            <td>@cli.Nps.ToString("0.0")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5 mb-3">
+                <div class="card h-100">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <strong>Ítems del presupuesto</strong>
+                        <span class="badge bg-secondary">@itemsPresupuesto.Count ítems</span>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (!itemsPresupuesto.Any())
+                        {
+                            <div class="p-3 text-muted">Agrega al menos un ítem para crear el presupuesto.</div>
+                        }
+                        else
+                        {
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Descripción</th>
+                                        <th>Tipo</th>
+                                        <th>Subtotal</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in itemsPresupuesto)
+                                    {
+                                        var subtotal = item.PrecioUnitario * (decimal)item.TiempoAsignadoHoras * item.Cantidad * (1 + item.PorcentajeAjuste / 100m);
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold">@item.Descripcion</div>
+                                                <div class="text-muted small">@item.Codigo</div>
+                                            </td>
+                                            <td><span class="badge bg-info">@item.Tipo</span></td>
+                                            <td>@subtotal.ToString("C")</td>
+                                            <td>
+                                                <button class="btn btn-link text-danger btn-sm" @onclick="() => RemoverItem(item)">
+                                                    <span class="oi oi-trash"></span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                            <div class="p-3 border-top">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Subtotal</span>
+                                    <strong>@subtotal.ToString("C")</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span>IVA @(tasaIvaPorcentaje)%</span>
+                                    <strong>@iva.ToString("C")</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-3" style="font-size: 1.2rem;">
+                                    <span>Total</span>
+                                    <strong>@total.ToString("C")</strong>
+                                </div>
+                                <button class="btn btn-success w-100" @onclick="CrearNuevoPresupuesto" disabled="@(itemsPresupuesto.Count == 0 || creando)">
+                                    <span class="oi oi-check me-1"></span> Crear presupuesto
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Cliente> clientes = new();
+    private List<ItemPresupuestoVm> itemsPresupuesto = new();
+    private Guid? clienteSeleccionado;
+    private string? placaVehiculo;
+    private string? vinVehiculo;
+    private decimal tasaIvaPorcentaje = 21m;
+    
+    // Variables para agregar items
+    private string tipoItemSeleccionado = "Pieza";
+    private string? codigoItem;
+    private string descripcionItem = string.Empty;
+    private int cantidadItem = 1;
+    private double horasItem = 1;
+    private decimal precioItem;
+
+    private string? mensajeExito;
+    private string? mensajeError;
+    private bool cargando = true;
+    private bool error = false;
+    private bool creando = false;
+
+    private TipoItemPresupuesto[] tiposItem = Enum.GetValues(typeof(TipoItemPresupuesto)).Cast<TipoItemPresupuesto>().ToArray();
+
+    private decimal subtotal => itemsPresupuesto.Sum(i =>
+        i.PrecioUnitario * (decimal)i.TiempoAsignadoHoras * i.Cantidad * (1 + i.PorcentajeAjuste / 100m));
+    private decimal iva => Math.Round(subtotal * (tasaIvaPorcentaje / 100m), 2);
+    private decimal total => subtotal + iva;
+
+    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        cargando = false;
+    }
+
+    private void AgregarItem()
+    {
+        if (string.IsNullOrWhiteSpace(descripcionItem))
+        {
+            mensajeError = "La descripción es obligatoria.";
+            return;
+        }
+
+        if (cantidadItem <= 0)
+        {
+            mensajeError = "La cantidad debe ser mayor a 0.";
+            return;
+        }
+
+        if (precioItem < 0)
+        {
+            mensajeError = "El precio no puede ser negativo.";
+            return;
+        }
+
+        var nuevoItem = new ItemPresupuestoVm
+        {
+            Tipo = (TipoItemPresupuesto)Enum.Parse(typeof(TipoItemPresupuesto), tipoItemSeleccionado),
+            Codigo = codigoItem,
+            Descripcion = descripcionItem,
+            Cantidad = cantidadItem,
+            TiempoAsignadoHoras = horasItem,
+            PrecioUnitario = precioItem,
+            PorcentajeAjuste = 0m,
+            RequierePintura = tipoItemSeleccionado == "Pintura",
+            RequiereDesmontajeDoble = false,
+            RequiereAlineacion = false
+        };
+
+        itemsPresupuesto.Add(nuevoItem);
+        mensajeError = null;
+        
+        // Limpiar campos
+        descripcionItem = string.Empty;
+        codigoItem = null;
+        cantidadItem = 1;
+        horasItem = 1;
+        precioItem = 0;
+    }
+
+    private void RemoverItem(ItemPresupuestoVm item)
+    {
+        itemsPresupuesto.Remove(item);
+    }
+
+    private async Task CrearNuevoPresupuesto()
+    {
+        if (itemsPresupuesto.Count == 0)
+        {
+            mensajeError = "Agrega al menos un ítem.";
+            return;
+        }
+
+        creando = true;
+        mensajeError = null;
+        mensajeExito = null;
+
+        try
+        {
+            using var _ = Busy.Start("Creando presupuesto...");
+            
+            var usuario = await ObtenerUsuarioActualAsync();
+            var presupuesto = await PresupuestoService.CrearPresupuestoAsync(
+                clienteId: clienteSeleccionado,
+                placaVehiculo: placaVehiculo,
+                vinVehiculo: vinVehiculo,
+                items: itemsPresupuesto,
+                tasaIva: tasaIvaPorcentaje / 100m,
+                usuarioCreador: usuario
+            );
+
+            mensajeExito = $"Presupuesto {presupuesto.Numero} creado exitosamente. Total: {presupuesto.Total:C}";
+            
+            // Limpiar formulario
+            itemsPresupuesto.Clear();
+            placaVehiculo = null;
+            vinVehiculo = null;
+            clienteSeleccionado = null;
+            descripcionItem = string.Empty;
+        }
+        catch (InvalidOperationException ex)
+        {
+            mensajeError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al crear presupuesto: {ex.Message}";
+        }
+        finally
+        {
+            creando = false;
+        }
+    }
+
+    private async Task<string?> ObtenerUsuarioActualAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        return authState.User?.Identity?.Name;
+    }
+}

@@ -1,0 +1,280 @@
+@page "/almacen/crear-refaccion"
+@using AtelierPro.Models
+@using AtelierPro.Services
+@inject AlmacenService AlmacenService
+@inject BusyService BusyService
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Admin,Finanzas,Almacen")]
+
+<PageTitle>Crear Refacción - AtelierPro</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <h1><span class="oi oi-plus me-2"></span>Nueva Refacción</h1>
+
+            @if (!string.IsNullOrEmpty(mensajeExito))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @mensajeExito
+                    <button type="button" class="btn-close" @onclick="() => mensajeExito = null"></button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(mensajeError))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @mensajeError
+                    <button type="button" class="btn-close" @onclick="() => mensajeError = null"></button>
+                </div>
+            }
+
+            <div class="card">
+                <div class="card-body">
+                    <EditForm Model="@nuevaRefaccion" OnValidSubmit="@GuardarRefaccion">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="alert alert-warning" />
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">SKU <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="nuevaRefaccion.Sku" placeholder="Ej: REF-001-MOT" />
+                                <ValidationMessage For="@(() => nuevaRefaccion.Sku)" class="text-danger" />
+                                <small class="text-muted d-block mt-1">Código único de la refacción</small>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="nuevaRefaccion.Nombre" placeholder="Ej: Alternador" />
+                                <ValidationMessage For="@(() => nuevaRefaccion.Nombre)" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <InputTextArea class="form-control" @bind-Value="nuevaRefaccion.Descripcion" rows="3" placeholder="Detalles adicionales..." />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Categoría <span class="text-danger">*</span></label>
+                                <InputSelect class="form-control" @bind-Value="nuevaRefaccion.Categoria">
+                                    <option value="">-- Seleccionar --</option>
+                                    <option value="Motor">Motor</option>
+                                    <option value="Eléctrica">Eléctrica</option>
+                                    <option value="Carrocería">Carrocería</option>
+                                    <option value="Suspensión">Suspensión</option>
+                                    <option value="Frenos">Frenos</option>
+                                    <option value="Transmisión">Transmisión</option>
+                                    <option value="Combustible">Combustible</option>
+                                    <option value="Refrigeración">Refrigeración</option>
+                                    <option value="Lubricación">Lubricación</option>
+                                    <option value="Otra">Otra</option>
+                                </InputSelect>
+                                <ValidationMessage For="@(() => nuevaRefaccion.Categoria)" class="text-danger" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Ubicación <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="nuevaRefaccion.Ubicacion" placeholder="Ej: Pasillo A - Estante 3" />
+                                <ValidationMessage For="@(() => nuevaRefaccion.Ubicacion)" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h5><span class="oi oi-inbox me-2"></span>Stock</h5>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Stock Inicial <span class="text-danger">*</span></label>
+                                <InputNumber class="form-control" @bind-Value="nuevaRefaccion.StockActual" min="0" />
+                                <ValidationMessage For="@(() => nuevaRefaccion.StockActual)" class="text-danger" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Stock Mínimo <span class="text-danger">*</span></label>
+                                <InputNumber class="form-control" @bind-Value="nuevaRefaccion.StockMinimo" min="1" />
+                                <ValidationMessage For="@(() => nuevaRefaccion.StockMinimo)" class="text-danger" />
+                                <small class="text-muted d-block mt-1">Alerta si desciende</small>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Stock Máximo <span class="text-danger">*</span></label>
+                                <InputNumber class="form-control" @bind-Value="nuevaRefaccion.StockMaximo" min="1" />
+                                <ValidationMessage For="@(() => nuevaRefaccion.StockMaximo)" class="text-danger" />
+                                <small class="text-muted d-block mt-1">Tope de almacenamiento</small>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h5><span class="oi oi-tag me-2"></span>Precios</h5>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Costo Promedio <span class="text-danger">*</span></label>
+                                <InputNumber class="form-control" @bind-Value="nuevaRefaccion.CostoPromedio" min="0" step="0.01" />
+                                <ValidationMessage For="@(() => nuevaRefaccion.CostoPromedio)" class="text-danger" />
+                                <small class="text-muted d-block mt-1">Costo de compra</small>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Precio Venta <span class="text-danger">*</span></label>
+                                <InputNumber class="form-control" @bind-Value="nuevaRefaccion.PrecioVenta" min="0" step="0.01" />
+                                <ValidationMessage For="@(() => nuevaRefaccion.PrecioVenta)" class="text-danger" />
+                                <small class="text-muted d-block mt-1">Precio al cliente</small>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" disabled="@procesando">
+                                @if (procesando)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    <span>Guardando...</span>
+                                }
+                                else
+                                {
+                                    <span class="oi oi-check me-2"></span>
+                                    <span>Crear Refacción</span>
+                                }
+                            </button>
+                            <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card bg-light">
+                <div class="card-header">
+                    <h5 class="card-title"><span class="oi oi-info me-2"></span>Ayuda</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Campos Requeridos:</h6>
+                    <ul class="small">
+                        <li>SKU: Código único</li>
+                        <li>Nombre: Descripción corta</li>
+                        <li>Categoría: Clasificación</li>
+                        <li>Ubicación: Pasillo/Estante</li>
+                        <li>Stock: Cantidades</li>
+                        <li>Precios: Costo y venta</li>
+                    </ul>
+
+                    <hr />
+
+                    <h6>Stock:</h6>
+                    <ul class="small">
+                        <li><strong>Inicial:</strong> Stock actual</li>
+                        <li><strong>Mínimo:</strong> Genera alerta</li>
+                        <li><strong>Máximo:</strong> Límite de almacén</li>
+                    </ul>
+
+                    <hr />
+
+                    <h6>Recomendaciones:</h6>
+                    <ul class="small">
+                        <li>Use SKU descriptivo</li>
+                        <li>Stock mín &lt; máx</li>
+                        <li>Precios coherentes</li>
+                        <li>Ubicación clara</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Refaccion nuevaRefaccion = new();
+    private string? mensajeExito;
+    private string? mensajeError;
+    private bool procesando;
+
+    protected override void OnInitialized()
+    {
+        // Valores por defecto
+        nuevaRefaccion.Activa = true;
+        nuevaRefaccion.StockActual = 0;
+        nuevaRefaccion.StockMinimo = 5;
+        nuevaRefaccion.StockMaximo = 100;
+        nuevaRefaccion.CostoPromedio = 0;
+        nuevaRefaccion.PrecioVenta = 0;
+    }
+
+    private async Task GuardarRefaccion()
+    {
+        try
+        {
+            procesando = true;
+            mensajeError = null;
+            mensajeExito = null;
+
+            // Validación adicional en servidor
+            if (string.IsNullOrWhiteSpace(nuevaRefaccion.Sku))
+            {
+                mensajeError = "SKU es requerido";
+                return;
+            }
+
+            if (nuevaRefaccion.StockMinimo >= nuevaRefaccion.StockMaximo)
+            {
+                mensajeError = "Stock mínimo debe ser menor a stock máximo";
+                return;
+            }
+
+            if (nuevaRefaccion.CostoPromedio > nuevaRefaccion.PrecioVenta)
+            {
+                mensajeError = "Costo no puede ser mayor a precio venta";
+                return;
+            }
+
+            await BusyService.RunAsync(async () =>
+            {
+                var refaccionCreada = await AlmacenService.CrearRefaccionAsync(nuevaRefaccion);
+                mensajeExito = $"✓ Refacción '{refaccionCreada.Nombre}' creada exitosamente (ID: {refaccionCreada.Id:N})";
+
+                // Limpiar formulario
+                LimpiarFormulario();
+
+                // Redirigir después de 2 segundos
+                await Task.Delay(2000);
+                NavigationManager.NavigateTo("/almacen/refacciones");
+            }, "Creando refacción...");
+        }
+        catch (InvalidOperationException ex)
+        {
+            mensajeError = $"⚠ {ex.Message}";
+        }
+        catch (ArgumentException ex)
+        {
+            mensajeError = $"⚠ {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"❌ Error: {ex.Message}";
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private void LimpiarFormulario()
+    {
+        nuevaRefaccion = new()
+        {
+            Activa = true,
+            StockActual = 0,
+            StockMinimo = 5,
+            StockMaximo = 100,
+            CostoPromedio = 0,
+            PrecioVenta = 0
+        };
+    }
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/almacen/refacciones");
+    }
+}

@@ -4,6 +4,7 @@
 @using AtelierPro.Services
 @attribute [Authorize(Roles = "Admin,Finanzas")]
 @inject ComprasService ComprasService
+@inject BusyService Busy
 
 <PageTitle>Registro de Requisiciones - AtelierPro</PageTitle>
 
@@ -91,6 +92,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = Busy.Start("Cargando requisiciones...");
         try
         {
             requisiciones = (await ComprasService.ObtenerRequisicionesAsync()).ToList();

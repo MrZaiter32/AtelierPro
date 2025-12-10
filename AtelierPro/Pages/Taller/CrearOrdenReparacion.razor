@@ -1,0 +1,340 @@
+@page "/taller/crear-orden"
+@using System.ComponentModel.DataAnnotations
+@using AtelierPro.Models
+@using AtelierPro.Services
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
+@inject TallerService TallerService
+@inject PresupuestoRepository PresupuestoRepo
+@inject BusyService Busy
+@inject NavigationManager NavigationManager
+
+<PageTitle>Crear Orden de Reparación - AtelierPro</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2><span class="oi oi-wrench me-2"></span>Crear Orden de Reparación</h2>
+            <p class="text-muted">Crea una orden de reparación basada en un presupuesto aprobado.</p>
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>Cargando datos...
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @mensajeError
+            <button type="button" class="btn-close" @onclick="() => mensajeError = null"></button>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(mensajeExito))
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @mensajeExito
+            <button type="button" class="btn-close" @onclick="() => { mensajeExito = null; LimpiarFormulario(); }"></button>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">1. Seleccionar Presupuesto</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Buscar presupuesto (ID o Cliente)</label>
+                                <input type="text" class="form-control" placeholder="Ej: ID o nombre del cliente"
+                                       @bind="busquedaPresupuesto" @onkeyup="BuscarPresupuestos" />
+                                <small class="text-muted">Escribe para buscar presupuestos aprobados</small>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(busquedaPresupuesto) && presupuestosFiltrados.Any())
+                        {
+                            <div class="list-group max-height-300">
+                                @foreach (var pres in presupuestosFiltrados)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action"
+                                            @onclick="() => SeleccionarPresupuesto(pres)">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">@pres.Id.ToString().Substring(0, 8)...</h6>
+                                            <small class="badge bg-success">@pres.Estado</small>
+                                        </div>
+                                        <p class="mb-1"><strong>Cliente:</strong> @pres.Cliente?.Nombre</p>
+                                        <small class="text-muted">Total: @pres.Total.ToString("C") | Fecha: @pres.FechaCreacion.ToShortDateString()</small>
+                                    </button>
+                                }
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(busquedaPresupuesto) && !presupuestosFiltrados.Any())
+                        {
+                            <div class="alert alert-info mb-0">No se encontraron presupuestos aprobados</div>
+                        }
+
+                        @if (presupuestoSeleccionado != null)
+                        {
+                            <div class="alert alert-success mt-3">
+                                <strong>✓ Presupuesto seleccionado:</strong><br />
+                                Cliente: <strong>@presupuestoSeleccionado.Cliente?.Nombre</strong><br />
+                                Total: <strong>@presupuestoSeleccionado.Total.ToString("C")</strong><br />
+                                <button type="button" class="btn btn-sm btn-outline-danger mt-2" @onclick="() => presupuestoSeleccionado = null">
+                                    Deseleccionar
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">2. Datos de la Orden</h5>
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="@modelo" OnValidSubmit="@CrearOrden">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Horas estimadas *</label>
+                                    <InputNumber class="form-control" @bind-Value="modelo.HorasEstimadas" />
+                                    <ValidationMessage For="() => modelo.HorasEstimadas" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Prioridad *</label>
+                                    <InputSelect class="form-select" @bind-Value="modelo.Prioridad">
+                                        <option value="">-- Seleccionar --</option>
+                                        <option value="Baja">Baja</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Alta">Alta</option>
+                                        <option value="Urgente">Urgente</option>
+                                    </InputSelect>
+                                    <ValidationMessage For="() => modelo.Prioridad" />
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-12">
+                                    <label class="form-label">Observaciones</label>
+                                    <InputTextArea class="form-control" @bind-Value="modelo.Observaciones"
+                                                   rows="3" placeholder="Notas adicionales..."></InputTextArea>
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-primary" disabled="@(presupuestoSeleccionado == null || cargandoCreacion)">
+                                    @if (cargandoCreacion)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        <span>Creando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="oi oi-check me-2"></span>
+                                        <span>Crear Orden</span>
+                                    }
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Técnicos Disponibles</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (!tecnicos.Any())
+                        {
+                            <div class="p-3 text-muted">Sin técnicos activos</div>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var tec in tecnicos.Take(10))
+                                {
+                                    <div class="list-group-item">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">@tec.Nombre @tec.Apellido</h6>
+                                            <small class="badge bg-secondary">@tec.Especialidad</small>
+                                        </div>
+                                        <small class="text-muted">
+                                            Costo: @tec.CostoPorHora.ToString("C")/h
+                                        </small>
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                    @onclick="@((Action)(() => { modelo.TecnicoId = tec.Id; tecnicoNombre = tec.NombreCompleto; }))">
+                                                Asignar
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (modelo.TecnicoId.HasValue)
+                {
+                    <div class="card shadow-sm bg-success-light">
+                        <div class="card-body">
+                            <h6 class="card-title">Técnico Asignado</h6>
+                            <p class="card-text mb-0"><strong>@tecnicoNombre</strong></p>
+                            <button type="button" class="btn btn-sm btn-outline-danger mt-2" 
+                                    @onclick="() => { modelo.TecnicoId = null; tecnicoNombre = string.Empty; }">
+                                Deseleccionar
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .max-height-300 {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .bg-success-light {
+        background-color: #f0f8f5 !important;
+    }
+</style>
+
+@code {
+    private CrearOrdenModelo modelo = new();
+    private List<Tecnico> tecnicos = new();
+    private List<Presupuesto> presupuestosFiltrados = new();
+    private Presupuesto? presupuestoSeleccionado;
+    private string busquedaPresupuesto = string.Empty;
+    private string tecnicoNombre = string.Empty;
+    private string? mensajeExito;
+    private string? mensajeError;
+    private bool cargando = true;
+    private bool cargandoCreacion = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var _ = Busy.Start("Cargando datos...");
+        try
+        {
+            tecnicos = (await TallerService.ObtenerTecnicosAsync(soloActivos: true)).ToList();
+            cargando = false;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error cargando datos: {ex.Message}";
+            cargando = false;
+        }
+    }
+
+    private async Task BuscarPresupuestos()
+    {
+        if (string.IsNullOrWhiteSpace(busquedaPresupuesto))
+        {
+            presupuestosFiltrados.Clear();
+            return;
+        }
+
+        try
+        {
+            var todos = await PresupuestoRepo.ObtenerTodosAsync();
+            var busquedaLower = busquedaPresupuesto.ToLower();
+            
+            presupuestosFiltrados = todos
+                .Where(p => p.Estado == EstadoPresupuesto.Aprobado && 
+                       (p.Id.ToString().Contains(busquedaLower) ||
+                        (p.Cliente?.Nombre.ToLower().Contains(busquedaLower) ?? false)))
+                .OrderByDescending(p => p.FechaCreacion)
+                .Take(5)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error buscando: {ex.Message}";
+        }
+    }
+
+    private void SeleccionarPresupuesto(Presupuesto presupuesto)
+    {
+        presupuestoSeleccionado = presupuesto;
+        busquedaPresupuesto = string.Empty;
+        presupuestosFiltrados.Clear();
+    }
+
+    private async Task CrearOrden()
+    {
+        if (presupuestoSeleccionado == null)
+        {
+            mensajeError = "Debes seleccionar un presupuesto";
+            return;
+        }
+
+        cargandoCreacion = true;
+        try
+        {
+            using var _ = Busy.Start("Creando orden de reparación...");
+
+            var result = await TallerService.CrearOrdenReparacionMejoradaAsync(
+                presupuestoSeleccionado.Id,
+                modelo.TecnicoId,
+                modelo.HorasEstimadas ?? 8,
+                modelo.Prioridad ?? "Normal",
+                modelo.Observaciones ?? string.Empty
+            );
+
+            if (result.Exitoso)
+            {
+                mensajeExito = $"✓ Orden creada exitosamente (ID: {result.OrdenId?.ToString().Substring(0, 8)}...)";
+                LimpiarFormulario();
+            }
+            else
+            {
+                mensajeError = result.Mensaje ?? "Error al crear la orden";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            cargandoCreacion = false;
+        }
+    }
+
+    private void LimpiarFormulario()
+    {
+        modelo = new();
+        presupuestoSeleccionado = null;
+        busquedaPresupuesto = string.Empty;
+        tecnicoNombre = string.Empty;
+    }
+
+    public class CrearOrdenModelo
+    {
+        [Required(ErrorMessage = "Las horas estimadas son requeridas")]
+        [Range(0.5, 500, ErrorMessage = "Las horas deben estar entre 0.5 y 500")]
+        public decimal? HorasEstimadas { get; set; } = 8;
+
+        [Required(ErrorMessage = "La prioridad es requerida")]
+        public string? Prioridad { get; set; } = "Normal";
+
+        public Guid? TecnicoId { get; set; }
+
+        [StringLength(1000)]
+        public string? Observaciones { get; set; }
+    }
+}

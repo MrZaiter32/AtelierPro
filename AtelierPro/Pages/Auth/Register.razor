@@ -1,100 +1,97 @@
 @page "/auth/register"
-@using Microsoft.AspNetCore.Identity
-@using AtelierPro.Data
-@inject UserManager<ApplicationUser> UserManager
-@inject SignInManager<ApplicationUser> SignInManager
+@using System.ComponentModel.DataAnnotations
+@using AtelierPro.Services
+@attribute [AllowAnonymous]
+@inject AuthService AuthService
 @inject NavigationManager NavigationManager
+@inject BusyService BusyService
 
 <div class="container mt-5">
     <div class="row justify-content-center">
-        <div class="col-md-7">
+        <div class="col-md-6">
             <div class="card shadow">
-                <div class="card-header bg-success text-white">
-                    <h3 class="mb-0">Crear Cuenta</h3>
+                <div class="card-header bg-primary">
+                    <h3 class="text-white mb-0">Crear Cuenta</h3>
                 </div>
                 <div class="card-body">
                     @if (!string.IsNullOrEmpty(ErrorMessage))
                     {
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <div class="alert alert-danger alert-dismissible fade show">
                             @ErrorMessage
-                            <button type="button" class="btn-close" @onclick="ClearError"></button>
+                            <button type="button" class="btn-close" @onclick="() => ErrorMessage = string.Empty"></button>
                         </div>
                     }
 
-                    @if (Errors.Count > 0)
-                    {
-                        <div class="alert alert-warning">
-                            <ul class="mb-0">
-                                @foreach (var error in Errors)
-                                {
-                                    <li>@error</li>
-                                }
-                            </ul>
-                        </div>
-                    }
+                    <EditForm Model="@registro" OnValidSubmit="@HandleRegister">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
 
-                    <form @onsubmit="HandleRegister">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="nombre" class="form-label">Nombre</label>
-                                <input type="text" id="nombre" class="form-control" placeholder="Juan" 
-                                       @bind="Nombre" required />
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="apellido" class="form-label">Apellido</label>
-                                <input type="text" id="apellido" class="form-control" placeholder="García" 
-                                       @bind="Apellido" required />
-                            </div>
+                        <div class="mb-3">
+                            <label for="nombreCompleto" class="form-label">Nombre Completo</label>
+                            <InputText id="nombreCompleto" class="form-control" placeholder="Juan Pérez"
+                                       @bind-Value="registro.NombreCompleto" />
+                            <ValidationMessage For="() => registro.NombreCompleto" />
                         </div>
 
                         <div class="mb-3">
                             <label for="email" class="form-label">Correo Electrónico</label>
-                            <input type="email" id="email" class="form-control" placeholder="usuario@atelierpro.com" 
-                                   @bind="Email" required />
+                            <InputText id="email" type="email" class="form-control" placeholder="usuario@ejemplo.com"
+                                       @bind-Value="registro.Email" />
+                            <ValidationMessage For="() => registro.Email" />
                         </div>
 
                         <div class="mb-3">
-                            <label for="telefono" class="form-label">Teléfono (opcional)</label>
-                            <input type="tel" id="telefono" class="form-control" placeholder="+55 1234567890" 
-                                   @bind="Telefono" />
+                            <label for="telefono" class="form-label">Teléfono (Opcional)</label>
+                            <InputText id="telefono" class="form-control" placeholder="+58 (xxx) xxx-xxxx"
+                                       @bind-Value="registro.Telefono" />
+                            <ValidationMessage For="() => registro.Telefono" />
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="password" class="form-label">Contraseña</label>
-                                <input type="password" id="password" class="form-control" placeholder="Min. 8 caracteres" 
-                                       @bind="Password" required />
-                                <small class="form-text text-muted d-block mt-2">
-                                    Mín. 8 caracteres, 1 mayúscula, 1 minúscula, 1 número
-                                </small>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="confirmPassword" class="form-label">Confirmar Contraseña</label>
-                                <input type="password" id="confirmPassword" class="form-control" placeholder="Confirme su contraseña" 
-                                       @bind="ConfirmPassword" required />
-                            </div>
+                        <div class="mb-3">
+                            <label for="direccion" class="form-label">Dirección (Opcional)</label>
+                            <InputText id="direccion" class="form-control" placeholder="Calle Principal 123"
+                                       @bind-Value="registro.Direccion" />
+                            <ValidationMessage For="() => registro.Direccion" />
                         </div>
 
-                        <button type="submit" class="btn btn-success w-100" disabled="@IsLoading">
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <InputText id="password" type="password" class="form-control" 
+                                       placeholder="Mínimo 8 caracteres"
+                                       @bind-Value="registro.Contraseña" />
+                            <ValidationMessage For="() => registro.Contraseña" />
+                            <small class="text-muted d-block mt-1">
+                                La contraseña debe contener: 8+ caracteres, mayúscula, minúscula, número
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirmar Contraseña</label>
+                            <InputText id="confirmPassword" type="password" class="form-control"
+                                       placeholder="Repite tu contraseña"
+                                       @bind-Value="registro.ConfirmarContraseña" />
+                            <ValidationMessage For="() => registro.ConfirmarContraseña" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 mb-2" disabled="@IsLoading">
                             @if (IsLoading)
                             {
-                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span class="spinner-border spinner-border-sm me-2"></span>
                                 <span>Registrando...</span>
                             }
                             else
                             {
-                                <span>Registrarse</span>
+                                <span>Crear Cuenta</span>
                             }
                         </button>
-                    </form>
+                    </EditForm>
 
                     <hr />
 
-                    <div class="text-center">
-                        <p>¿Ya tienes cuenta? <a href="/auth/login" class="link-primary">Iniciar sesión</a></p>
-                    </div>
+                    <p class="text-center mb-0">
+                        ¿Ya tienes cuenta? 
+                        <a href="/auth/login" class="text-decoration-none">Inicia sesión aquí</a>
+                    </p>
                 </div>
             </div>
         </div>
@@ -102,64 +99,79 @@
 </div>
 
 @code {
-    private string Nombre = string.Empty;
-    private string Apellido = string.Empty;
-    private string Email = string.Empty;
-    private string Telefono = string.Empty;
-    private string Password = string.Empty;
-    private string ConfirmPassword = string.Empty;
+    private RegistroModelo registro = new();
     private string ErrorMessage = string.Empty;
-    private List<string> Errors = new();
     private bool IsLoading = false;
 
     private async Task HandleRegister()
     {
         IsLoading = true;
         ErrorMessage = string.Empty;
-        Errors.Clear();
 
         try
         {
-            if (Password != ConfirmPassword)
+            using (BusyService.Start("Registrando usuario..."))
             {
-                ErrorMessage = "Las contraseñas no coinciden.";
-                IsLoading = false;
-                return;
-            }
-
-            var user = new ApplicationUser
-            {
-                UserName = Email,
-                Email = Email,
-                NombreCompleto = $"{Nombre} {Apellido}",
-                Telefono = Telefono
-            };
-
-            var result = await UserManager.CreateAsync(user, Password);
-
-            if (result.Succeeded)
-            {
-                await UserManager.AddToRoleAsync(user, "Cliente");
-                await SignInManager.SignInAsync(user, isPersistent: false);
-                NavigationManager.NavigateTo("/", forceLoad: true);
-            }
-            else
-            {
-                foreach (var error in result.Errors)
+                // Validar que las contraseñas coincidan
+                if (registro.Contraseña != registro.ConfirmarContraseña)
                 {
-                    Errors.Add(error.Description);
+                    ErrorMessage = "Las contraseñas no coinciden.";
+                    IsLoading = false;
+                    return;
+                }
+
+                // Registrar usuario
+                var (exitoso, mensaje) = await AuthService.RegistrarUsuarioAsync(
+                    registro.Email,
+                    registro.Contraseña,
+                    registro.NombreCompleto,
+                    registro.Telefono,
+                    registro.Direccion
+                );
+
+                if (exitoso)
+                {
+                    // Redirigir al login con mensaje de éxito (opcional: usar parametro de query)
+                    NavigationManager.NavigateTo("/auth/login");
+                }
+                else
+                {
+                    ErrorMessage = mensaje ?? "Ocurrió un error durante el registro. Por favor intenta de nuevo.";
+                    IsLoading = false;
                 }
             }
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Error: {ex.Message}";
-        }
-        finally
-        {
+            ErrorMessage = $"Error inesperado: {ex.Message}";
             IsLoading = false;
         }
     }
 
-    private void ClearError() => ErrorMessage = string.Empty;
+    // Modelo de validación para el registro
+    public class RegistroModelo
+    {
+        [Required(ErrorMessage = "El nombre completo es requerido")]
+        [StringLength(100, MinimumLength = 3, 
+            ErrorMessage = "El nombre debe tener entre 3 y 100 caracteres")]
+        public string NombreCompleto { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El correo es requerido")]
+        [EmailAddress(ErrorMessage = "Correo inválido")]
+        public string Email { get; set; } = string.Empty;
+
+        [Phone(ErrorMessage = "Teléfono inválido")]
+        public string? Telefono { get; set; }
+
+        [StringLength(200)]
+        public string? Direccion { get; set; }
+
+        [Required(ErrorMessage = "La contraseña es requerida")]
+        [StringLength(100, MinimumLength = 8,
+            ErrorMessage = "La contraseña debe tener entre 8 y 100 caracteres")]
+        public string Contraseña { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Debe confirmar la contraseña")]
+        public string ConfirmarContraseña { get; set; } = string.Empty;
+    }
 }

@@ -1,0 +1,17 @@
+@page "/test"
+
+<PageTitle>Test</PageTitle>
+
+<h1 style="color: #594ae2;">✅ Blazor funciona</h1>
+<p>Si ves este contenido, Blazor está renderizando y el circuito SignalR está activo.</p>
+
+<button class="btn btn-primary" @onclick="IncrementCount">Clicks: @currentCount</button>
+
+@code {
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+}

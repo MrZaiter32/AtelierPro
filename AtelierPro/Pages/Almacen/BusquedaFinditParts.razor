@@ -1,0 +1,233 @@
+@page "/almacen/busqueda-finditparts"
+@using AtelierPro.Models
+@using AtelierPro.Services
+@inject IFinditPartsService FinditPartsService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject BusyService Busy
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
+
+<PageTitle>Búsqueda de Artículos - FinditParts</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.Search" Class="mr-2" />
+        Búsqueda de Artículos (FinditParts)
+    </MudText>
+
+    <!-- Formulario de búsqueda -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MudTextField @bind-Value="@terminoBusqueda"
+                               Label="Número de Parte o Descripción"
+                               Variant="Variant.Outlined"
+                               Placeholder="Ej: EX4462D, R537001, Meritor brake..."
+                               Adornment="Adornment.End"
+                               AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           OnClick="BuscarProducto"
+                           Disabled="@buscando"
+                           StartIcon="@Icons.Material.Filled.Search">
+                    @if (buscando)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Buscando...</span>
+                    }
+                    else
+                    {
+                        <span>Buscar</span>
+                    }
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Resultados -->
+    @if (resultados != null && resultados.Any())
+    {
+        <MudText Typo="Typo.h6" Class="mb-3">
+            Resultados encontrados: @resultados.Count
+        </MudText>
+
+        @foreach (var producto in resultados)
+        {
+            <MudCard Class="mb-4" Elevation="2">
+                <MudCardContent>
+                    <MudGrid>
+                        <!-- Imagen -->
+                        <MudItem xs="12" md="3">
+                            @if (!string.IsNullOrEmpty(producto.Images))
+                            {
+                                <MudImage Src="@producto.Images"
+                                          Alt="@producto.ProductName"
+                                          Class="rounded"
+                                          ObjectFit="ObjectFit.Contain"
+                                          Height="200" />
+                            }
+                            else
+                            {
+                                <MudPaper Class="d-flex align-center justify-center" Height="200px">
+                                    <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Large" Color="Color.Secondary" />
+                                </MudPaper>
+                            }
+                        </MudItem>
+
+                        <!-- Información del producto -->
+                        <MudItem xs="12" md="9">
+                            <!-- Título -->
+                            <MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-2">
+                                @producto.ProductName
+                            </MudText>
+
+                            <!-- Part Number y Manufacturer -->
+                            <MudChipSet Class="mb-3">
+                                <MudChip Color="Color.Info" Icon="@Icons.Material.Filled.Tag">
+                                    Part #: @producto.PartNumber
+                                </MudChip>
+                                <MudChip Color="Color.Secondary" Icon="@Icons.Material.Filled.Business">
+                                    @producto.Manufacturer
+                                </MudChip>
+                            </MudChipSet>
+
+                            <!-- Descripción -->
+                            <MudText Typo="Typo.body1" Class="mb-2">
+                                <strong>Descripción:</strong> @producto.Description
+                            </MudText>
+
+                            <!-- Descripción larga -->
+                            @if (!string.IsNullOrEmpty(producto.LongDescription))
+                            {
+                                <MudExpansionPanels Class="mb-2">
+                                    <MudExpansionPanel Text="Ver descripción completa">
+                                        <MudText Typo="Typo.body2">
+                                            @producto.LongDescription
+                                        </MudText>
+                                    </MudExpansionPanel>
+                                </MudExpansionPanels>
+                            }
+
+                            <!-- Brand Info -->
+                            @if (!string.IsNullOrEmpty(producto.BrandInfo))
+                            {
+                                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                                    @producto.BrandInfo
+                                </MudAlert>
+                            }
+
+                            <!-- Cross References -->
+                            @if (!string.IsNullOrEmpty(producto.CrossReferences))
+                            {
+                                <MudText Typo="Typo.body2" Class="mb-2">
+                                    <strong>Referencias Cruzadas:</strong>
+                                    <br />
+                                    <MudText Typo="Typo.caption">@producto.CrossReferences</MudText>
+                                </MudText>
+                            }
+
+                            <!-- Botones de acción -->
+                            <MudDivider Class="my-3" />
+                            <MudButtonGroup Variant="Variant.Outlined">
+                                <MudButton StartIcon="@Icons.Material.Filled.OpenInNew"
+                                           Href="@producto.Url"
+                                           Target="_blank"
+                                           Color="Color.Primary">
+                                    Ver en FinditParts
+                                </MudButton>
+                                <MudButton StartIcon="@Icons.Material.Filled.ContentCopy"
+                                           OnClick="@(() => CopiarPartNumber(producto.PartNumber))"
+                                           Color="Color.Secondary">
+                                    Copiar Part Number
+                                </MudButton>
+                            </MudButtonGroup>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+    else if (buscando)
+    {
+        <MudPaper Class="pa-8 d-flex justify-center">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+        </MudPaper>
+    }
+    else if (mensajeBusqueda != null)
+    {
+        <MudAlert Severity="Severity.Warning">
+            @mensajeBusqueda
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private string terminoBusqueda = string.Empty;
+    private bool buscando = false;
+    private List<FinditPartsProducto> resultados = new();
+    private string? mensajeBusqueda;
+
+    private async Task BuscarProducto()
+    {
+        if (string.IsNullOrWhiteSpace(terminoBusqueda))
+        {
+            Snackbar.Add("Por favor ingrese un término de búsqueda", Severity.Warning);
+            return;
+        }
+
+        buscando = true;
+        mensajeBusqueda = null;
+        resultados.Clear();
+
+        using var _ = Busy.Start("Buscando en FinditParts...");
+
+        try
+        {
+            var response = await FinditPartsService.BuscarProductoAsync(terminoBusqueda);
+
+            if (response.Success && response.Resultados != null)
+            {
+                resultados = response.Resultados;
+
+                if (resultados.Count == 0)
+                {
+                    mensajeBusqueda = "No se encontraron resultados para su búsqueda.";
+                }
+                else
+                {
+                    Snackbar.Add($"Se encontraron {resultados.Count} resultados", Severity.Success);
+                }
+            }
+            else
+            {
+                mensajeBusqueda = $"Error: {response.Error ?? "Error desconocido"}";
+                Snackbar.Add(mensajeBusqueda, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeBusqueda = $"Error al buscar: {ex.Message}";
+            Snackbar.Add(mensajeBusqueda, Severity.Error);
+        }
+        finally
+        {
+            buscando = false;
+        }
+    }
+
+    private async Task CopiarPartNumber(string partNumber)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", partNumber);
+            Snackbar.Add($"Part Number {partNumber} copiado", Severity.Info);
+        }
+        catch
+        {
+            Snackbar.Add("No se pudo copiar el Part Number", Severity.Error);
+        }
+    }
+}

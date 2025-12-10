@@ -1,0 +1,24 @@
+@using AtelierPro.Services
+@inject BusyService Busy
+
+<div class="busy-overlay" style="@(Busy.IsBusy ? "display:flex" : "display:none")">
+    <div class="busy-card">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        @if (!string.IsNullOrWhiteSpace(Busy.Message))
+        {
+            <MudText Typo="Typo.body2" Class="mt-2 text-center">@Busy.Message</MudText>
+        }
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Busy.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Busy.OnChange -= StateHasChanged;
+    }
+}

@@ -20,24 +20,19 @@ namespace AtelierPro.Services.Catalogos
     public class FinditPartsCatalogoService : ICatalogoProveedorService
     {
         private readonly HttpClient _httpClient;
-        private readonly string _apiBaseUrl;
 
         public string NombreProveedor => "FinditParts";
 
-        public FinditPartsCatalogoService(string apiBaseUrl = "http://localhost:5000")
+        public FinditPartsCatalogoService(HttpClient httpClient)
         {
-            _httpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromSeconds(60) // Scraping puede tardar
-            };
-            _apiBaseUrl = apiBaseUrl;
+            _httpClient = httpClient;
         }
 
         public async Task<bool> VerificarDisponibilidadAsync()
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{_apiBaseUrl}/health");
+                var response = await _httpClient.GetAsync("/health");
                 return response.IsSuccessStatusCode;
             }
             catch
@@ -59,7 +54,7 @@ namespace AtelierPro.Services.Catalogos
                 var json = JsonSerializer.Serialize(request);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync($"{_apiBaseUrl}/producto/part-number", content);
+                var response = await _httpClient.PostAsync("/producto/part-number", content);
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode)
@@ -87,7 +82,7 @@ namespace AtelierPro.Services.Catalogos
                 var json = JsonSerializer.Serialize(request);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync($"{_apiBaseUrl}/producto", content);
+                var response = await _httpClient.PostAsync("/producto", content);
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode)
@@ -126,7 +121,7 @@ namespace AtelierPro.Services.Catalogos
                 var json = JsonSerializer.Serialize(request);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync($"{_apiBaseUrl}/productos/lote", content);
+                var response = await _httpClient.PostAsync("/productos/lote", content);
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode)

@@ -1,6 +1,7 @@
 @page "/crm/clientes"
 @using AtelierPro.Models
 @using AtelierPro.Services
+@attribute [Authorize]
 @inject ClienteService ClienteSvc
 
 <PageTitle>CRM - Lista de Clientes</PageTitle>

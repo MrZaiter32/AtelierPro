@@ -4,6 +4,7 @@
 @using AtelierPro.Models
 @using AtelierPro.Services
 @inject ComprasService ComprasService
+@inject BusyService Busy
 @attribute [Authorize(Roles = "Admin,Finanzas")]
 
 <PageTitle>Órdenes de Compra - AtelierPro</PageTitle>
@@ -98,6 +99,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = Busy.Start("Cargando órdenes de compra...");
         try
         {
             ordenes = (await ComprasService.ObtenerOrdenesCompraAsync()).ToList();

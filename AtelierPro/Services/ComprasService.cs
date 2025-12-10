@@ -223,7 +223,7 @@ public class ComprasService
     #region Órdenes de Compra
 
     /// <summary>
-    /// Crea una nueva orden de compra.
+    /// Crea una nueva orden de compra con validaciones completas.
     /// </summary>
     public async Task<OrdenCompra> CrearOrdenCompraAsync(
         Guid proveedorId,
@@ -231,17 +231,33 @@ public class ComprasService
         string responsableUsuarioId,
         string observaciones = "")
     {
+        // Validación 1: Proveedor válido y activo
         var proveedor = await _context.Proveedores.FindAsync(proveedorId)
             ?? throw new KeyNotFoundException($"Proveedor {proveedorId} no encontrado.");
 
         if (!proveedor.Activo)
             throw new InvalidOperationException($"El proveedor {proveedor.RazonSocial} está inactivo.");
 
+        // Validación 2: Ítems no vacío
         if (!items.Any())
             throw new ArgumentException("La orden debe tener al menos un item.");
 
-        _logger.LogInformation("Creando orden de compra para proveedor: {proveedor}",
-            proveedor.RazonSocial);
+        // Validación 3: Validar cada ítem
+        foreach (var (refaccionId, cantidad, precioUnitario) in items)
+        {
+            if (cantidad <= 0)
+                throw new ArgumentException($"La cantidad debe ser mayor a cero para refacción {refaccionId}");
+            
+            if (precioUnitario < 0)
+                throw new ArgumentException($"El precio unitario no puede ser negativo para refacción {refaccionId}");
+
+            var refaccion = await _context.Refacciones.FindAsync(refaccionId);
+            if (refaccion == null)
+                throw new KeyNotFoundException($"Refacción {refaccionId} no encontrada");
+        }
+
+        _logger.LogInformation("Creando orden de compra para proveedor: {proveedor} | Usuario: {usuario}",
+            proveedor.RazonSocial, responsableUsuarioId);
 
         var orden = new OrdenCompra
         {
@@ -274,11 +290,25 @@ public class ComprasService
         orden.Iva = Math.Round(subtotal * 0.16m, 2);
         orden.Total = orden.Subtotal + orden.Iva;
 
-        _context.OrdenesCompra.Add(orden);
-        await _context.SaveChangesAsync();
+        // Validación 4: Guardar en transacción
+        using (var transaction = await _context.Database.BeginTransactionAsync())
+        {
+            try
+            {
+                _context.OrdenesCompra.Add(orden);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-        _logger.LogInformation("Orden de compra creada: {numero} - Total: ${total}",
-            orden.Numero, orden.Total);
+                _logger.LogInformation("Orden de compra creada exitosamente: {numero} | Total: ${total} | Usuario: {usuario}",
+                    orden.Numero, orden.Total, responsableUsuarioId);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error al crear orden de compra para proveedor {proveedor}", proveedorId);
+                throw;
+            }
+        }
 
         return orden;
     }

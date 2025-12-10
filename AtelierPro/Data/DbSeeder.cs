@@ -72,11 +72,12 @@ public static class DbSeeder
         // Crear presupuesto
         var presupuesto = new Presupuesto
         {
+            Numero = $"P{DateTime.UtcNow.Year}-00001",
             Vehiculo = vehiculo,
             Items = new List<ItemPresupuesto> { item1, item2 },
             // Subtotal es calculado automáticamente
             IvaAplicado = 69.6m, // Se calculará correctamente con PresupuestoService
-            TotalFinal = 504.6m, // Se calculará correctamente con PresupuestoService
+            Total = 504.6m, // Se calculará correctamente con PresupuestoService
             Estado = EstadoPresupuesto.Aprobado
         };
         context.Presupuestos.Add(presupuesto);
@@ -230,7 +231,7 @@ public static class DbSeeder
         var factura = new FacturaCliente
         {
             PresupuestoId = presupuesto.Id,
-            Importe = presupuesto.TotalFinal,
+            Importe = presupuesto.Total,
             FechaEmision = DateTime.UtcNow,
             Pagada = false
         };

@@ -1,13 +1,20 @@
 @page "/auth/login"
+@using System.ComponentModel.DataAnnotations
+@using AtelierPro.Services
+@attribute [AllowAnonymous]
+@inject AuthService AuthService
 @inject NavigationManager NavigationManager
-@inject IJSRuntime Js
+@inject BusyService Busy
 
 <div class="container mt-5">
     <div class="row justify-content-center">
-        <div class="col-md-6">
+        <div class="col-md-5">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">Iniciar Sesión</h3>
+                    <h4 class="mb-0">
+                        <span class="oi oi-lock-locked me-2"></span>
+                        Iniciar Sesión
+                    </h4>
                 </div>
                 <div class="card-body">
                     @if (!string.IsNullOrEmpty(ErrorMessage))
@@ -18,24 +25,28 @@
                         </div>
                     }
 
-                    <form @onsubmit="HandleLogin">
+                    <EditForm Model="modelo" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+
                         <div class="mb-3">
-                            <label for="email" class="form-label">Correo Electrónico</label>
-                            <input type="email" id="email" class="form-control" placeholder="usuario@atelierpro.com" 
-                                   @bind="Email" required />
+                            <label for="email" class="form-label">Email</label>
+                            <InputText type="email" id="email" class="form-control" placeholder="usuario@atelierpro.com" 
+                                   @bind-Value="modelo.Email" />
+                            <ValidationMessage For="() => modelo.Email" />
                         </div>
 
                         <div class="mb-3">
                             <label for="password" class="form-label">Contraseña</label>
-                            <input type="password" id="password" class="form-control" placeholder="Ingrese su contraseña" 
-                                   @bind="Password" required />
+                            <InputText id="password" type="password" class="form-control" placeholder="••••••••" 
+                                   @bind-Value="modelo.Contraseña" />
+                            <ValidationMessage For="() => modelo.Contraseña" />
                         </div>
 
                         <div class="form-check mb-3">
-                            <input type="checkbox" class="form-check-input" id="rememberMe" 
-                                   @bind="RememberMe" />
+                            <InputCheckbox class="form-check-input" id="rememberMe" 
+                                   @bind-Value="modelo.Recordarme" />
                             <label class="form-check-label" for="rememberMe">
-                                Recuérdame
+                                Recuérdame en este dispositivo
                             </label>
                         </div>
 
@@ -43,46 +54,48 @@
                             @if (IsLoading)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                <span>Iniciando sesión...</span>
+                                <span>Ingresando...</span>
                             }
                             else
                             {
+                                <span class="oi oi-account-login me-2"></span>
                                 <span>Iniciar Sesión</span>
                             }
                         </button>
-                    </form>
+                    </EditForm>
 
                     <hr />
 
                     <div class="text-center">
-                        <p>¿No tienes cuenta? <a href="/auth/register" class="link-primary">Registrarse</a></p>
+                        <p>¿No tienes cuenta? <a href="/auth/register" class="link-primary">Regístrate aquí</a></p>
                     </div>
                 </div>
+            </div>
+
+            <div class="mt-4 text-center text-muted small">
+                <p>AtelierPro ERP • v1.0</p>
+                <p>Sistema de gestión para talleres de choque</p>
             </div>
         </div>
     </div>
 </div>
 
 @code {
-    private string Email = string.Empty;
-    private string Password = string.Empty;
-    private bool RememberMe = false;
+    private LoginModelo modelo = new();
     private string ErrorMessage = string.Empty;
     private bool IsLoading = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    public class LoginModelo
     {
-        if (firstRender)
-        {
-            // Revisar si hay error del login anterior en localStorage
-            var error = await Js.InvokeAsync<string>("localStorage.getItem", "loginError");
-            if (!string.IsNullOrEmpty(error))
-            {
-                ErrorMessage = error;
-                await Js.InvokeAsync<object>("localStorage.removeItem", "loginError");
-                StateHasChanged();
-            }
-        }
+        [EmailAddress(ErrorMessage = "Email inválido")]
+        [Required(ErrorMessage = "El email es requerido")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La contraseña es requerida")]
+        [StringLength(100, MinimumLength = 8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
+        public string Contraseña { get; set; } = string.Empty;
+
+        public bool Recordarme { get; set; }
     }
 
     private async Task HandleLogin()
@@ -92,13 +105,25 @@
 
         try
         {
-            // Crear query string con credenciales y redirigir a un endpoint que maneje el login
-            var queryParams = $"?email={Uri.EscapeDataString(Email)}&password={Uri.EscapeDataString(Password)}&rememberMe={RememberMe}";
-            NavigationManager.NavigateTo($"/api-auth/login{queryParams}", forceLoad: true);
+            using var _ = Busy.Start("Validando credenciales...");
+
+            var (exitoso, mensaje) = await AuthService.LoginAsync(modelo.Email, modelo.Contraseña, modelo.Recordarme);
+
+            if (exitoso)
+            {
+                NavigationManager.NavigateTo("/", forceLoad: true);
+            }
+            else
+            {
+                ErrorMessage = mensaje ?? "Error desconocido durante el login.";
+            }
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Error: {ex.Message}";
+            ErrorMessage = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
             IsLoading = false;
         }
     }

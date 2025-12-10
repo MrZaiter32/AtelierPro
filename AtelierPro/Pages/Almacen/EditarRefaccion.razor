@@ -1,0 +1,365 @@
+@page "/almacen/editar-refaccion/{id:guid}"
+@using AtelierPro.Models
+@using AtelierPro.Services
+@inject AlmacenService AlmacenService
+@inject BusyService BusyService
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Admin,Finanzas,Almacen")]
+
+<PageTitle>Editar Refacción - AtelierPro</PageTitle>
+
+<div class="container-fluid mt-4">
+    @if (cargando)
+    {
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Cargando refacción...
+        </div>
+    }
+    else if (refaccion == null)
+    {
+        <div class="alert alert-danger">Refacción no encontrada</div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-lg-8">
+                <h1><span class="oi oi-pencil me-2"></span>Editar: @refaccion.Nombre</h1>
+
+                @if (!string.IsNullOrEmpty(mensajeExito))
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        @mensajeExito
+                        <button type="button" class="btn-close" @onclick="() => mensajeExito = null"></button>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(mensajeError))
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        @mensajeError
+                        <button type="button" class="btn-close" @onclick="() => mensajeError = null"></button>
+                    </div>
+                }
+
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5>Información General</h5>
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="@refaccion" OnValidSubmit="@GuardarRefaccion">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="alert alert-warning" />
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">SKU <span class="text-danger">*</span></label>
+                                    <InputText class="form-control" @bind-Value="refaccion.Sku" disabled />
+                                    <small class="text-muted d-block mt-1">(No se puede modificar)</small>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                                    <InputText class="form-control" @bind-Value="refaccion.Nombre" />
+                                    <ValidationMessage For="@(() => refaccion.Nombre)" class="text-danger" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Descripción</label>
+                                <InputTextArea class="form-control" @bind-Value="refaccion.Descripcion" rows="2" />
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Categoría <span class="text-danger">*</span></label>
+                                    <InputSelect class="form-control" @bind-Value="refaccion.Categoria">
+                                        <option value="">-- Seleccionar --</option>
+                                        <option value="Motor">Motor</option>
+                                        <option value="Eléctrica">Eléctrica</option>
+                                        <option value="Carrocería">Carrocería</option>
+                                        <option value="Suspensión">Suspensión</option>
+                                        <option value="Frenos">Frenos</option>
+                                        <option value="Transmisión">Transmisión</option>
+                                        <option value="Combustible">Combustible</option>
+                                        <option value="Refrigeración">Refrigeración</option>
+                                        <option value="Lubricación">Lubricación</option>
+                                        <option value="Otra">Otra</option>
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => refaccion.Categoria)" class="text-danger" />
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Ubicación <span class="text-danger">*</span></label>
+                                    <InputText class="form-control" @bind-Value="refaccion.Ubicacion" />
+                                    <ValidationMessage For="@(() => refaccion.Ubicacion)" class="text-danger" />
+                                </div>
+                            </div>
+
+                            <hr class="my-4" />
+                            <h5><span class="oi oi-inbox me-2"></span>Stock</h5>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Stock Actual</label>
+                                    <InputNumber class="form-control" @bind-Value="refaccion.StockActual" min="0" disabled />
+                                    <small class="text-muted d-block mt-1">(Usa movimientos de inventario)</small>
+                                </div>
+
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Stock Mínimo <span class="text-danger">*</span></label>
+                                    <InputNumber class="form-control" @bind-Value="refaccion.StockMinimo" min="1" />
+                                    <ValidationMessage For="@(() => refaccion.StockMinimo)" class="text-danger" />
+                                </div>
+
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Stock Máximo <span class="text-danger">*</span></label>
+                                    <InputNumber class="form-control" @bind-Value="refaccion.StockMaximo" min="1" />
+                                    <ValidationMessage For="@(() => refaccion.StockMaximo)" class="text-danger" />
+                                </div>
+                            </div>
+
+                            <hr class="my-4" />
+                            <h5><span class="oi oi-tag me-2"></span>Precios</h5>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Costo Promedio <span class="text-danger">*</span></label>
+                                    <InputNumber class="form-control" @bind-Value="refaccion.CostoPromedio" min="0" step="0.01" />
+                                    <ValidationMessage For="@(() => refaccion.CostoPromedio)" class="text-danger" />
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Precio Venta <span class="text-danger">*</span></label>
+                                    <InputNumber class="form-control" @bind-Value="refaccion.PrecioVenta" min="0" step="0.01" />
+                                    <ValidationMessage For="@(() => refaccion.PrecioVenta)" class="text-danger" />
+                                </div>
+                            </div>
+
+                            <hr class="my-4" />
+                            <h5><span class="oi oi-power-standby me-2"></span>Estado</h5>
+
+                            <div class="form-check mb-3">
+                                <InputCheckbox class="form-check-input" @bind-Value="refaccion.Activa" />
+                                <label class="form-check-label">
+                                    Refacción Activa
+                                </label>
+                            </div>
+
+                            <div class="mt-4 d-flex gap-2">
+                                <button type="submit" class="btn btn-primary" disabled="@procesando">
+                                    @if (procesando)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        <span>Guardando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="oi oi-check me-2"></span>
+                                        <span>Guardar Cambios</span>
+                                    }
+                                </button>
+                                <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card bg-light mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title"><span class="oi oi-info me-2"></span>Información</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Stock Actual:</strong></p>
+                        <p>
+                            @if (refaccion.StockActual < refaccion.StockMinimo)
+                            {
+                                <span class="badge bg-danger">@refaccion.StockActual ⚠ BAJO</span>
+                            }
+                            else if (refaccion.StockActual <= 0)
+                            {
+                                <span class="badge bg-danger">0 CRÍTICO</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">@refaccion.StockActual</span>
+                            }
+                        </p>
+
+                        <hr />
+
+                        <p><strong>Margen:</strong></p>
+                        <p>
+                            @{
+                                var margen = refaccion.PrecioVenta - refaccion.CostoPromedio;
+                                var margenPct = refaccion.CostoPromedio > 0 
+                                    ? (margen / refaccion.CostoPromedio * 100) 
+                                    : 0;
+                            }
+                            <span class="@(margen > 0 ? "text-success" : "text-danger")">
+                                @margen.ToString("C") (@margenPct.ToString("F1")%)
+                            </span>
+                        </p>
+
+                        <hr />
+
+                        <p class="small text-muted">
+                            <strong>Actualizada:</strong><br />
+                            @refaccion.FechaActualizacion:g
+                        </p>
+
+                        <p class="small text-muted">
+                            <strong>ID:</strong><br />
+                            @refaccion.Id
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title"><span class="oi oi-document me-2"></span>Acciones</h5>
+                    </div>
+                    <div class="card-body">
+                        <a href="/almacen/movimientos?refaccion=@refaccion.Id" class="btn btn-sm btn-info w-100 mb-2">
+                            <span class="oi oi-transfer me-1"></span>Ver Movimientos
+                        </a>
+                        <button class="btn btn-sm btn-danger w-100" @onclick="@(() => MostrarConfirmacion = true)">
+                            <span class="oi oi-x me-1"></span>Desactivar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de confirmación -->
+        @if (MostrarConfirmacion)
+        {
+            <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">Confirmar desactivación</h5>
+                            <button type="button" class="btn-close btn-close-white" @onclick="() => MostrarConfirmacion = false"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>¿Está seguro de desactivar la refacción <strong>@refaccion.Nombre</strong>?</p>
+                            <p class="text-muted">Esta acción no se puede deshacer directamente desde esta pantalla.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="() => MostrarConfirmacion = false">Cancelar</button>
+                            <button type="button" class="btn btn-danger" @onclick="DesactivarRefaccion">Desactivar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Refaccion? refaccion;
+    private bool cargando = true;
+    private bool procesando;
+    private string? mensajeExito;
+    private string? mensajeError;
+    private bool MostrarConfirmacion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            refaccion = await AlmacenService.ObtenerRefaccionAsync(Id);
+            if (refaccion == null)
+                mensajeError = "Refacción no encontrada";
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al cargar: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task GuardarRefaccion()
+    {
+        try
+        {
+            procesando = true;
+            mensajeError = null;
+            mensajeExito = null;
+
+            if (refaccion == null)
+            {
+                mensajeError = "Refacción no encontrada";
+                return;
+            }
+
+            if (refaccion.StockMinimo >= refaccion.StockMaximo)
+            {
+                mensajeError = "Stock mínimo debe ser menor a stock máximo";
+                return;
+            }
+
+            if (refaccion.CostoPromedio > refaccion.PrecioVenta)
+            {
+                mensajeError = "Costo no puede ser mayor a precio venta";
+                return;
+            }
+
+            await BusyService.RunAsync(async () =>
+            {
+                var actualizada = await AlmacenService.ActualizarRefaccionAsync(Id, refaccion);
+                mensajeExito = "✓ Cambios guardados exitosamente";
+
+                await Task.Delay(1500);
+                NavigationManager.NavigateTo("/almacen/refacciones");
+            }, "Guardando cambios...");
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"❌ Error: {ex.Message}";
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private async Task DesactivarRefaccion()
+    {
+        try
+        {
+            if (refaccion == null) return;
+
+            MostrarConfirmacion = false;
+
+            await BusyService.RunAsync(async () =>
+            {
+                await AlmacenService.DesactivarRefaccionAsync(Id);
+                mensajeExito = $"✓ Refacción '{refaccion.Nombre}' desactivada";
+
+                await Task.Delay(1500);
+                NavigationManager.NavigateTo("/almacen/refacciones");
+            }, "Desactivando...");
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"❌ Error: {ex.Message}";
+        }
+        finally
+        {
+        }
+    }
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/almacen/refacciones");
+    }
+}

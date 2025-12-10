@@ -30,17 +30,20 @@ namespace AtelierPro.Controllers
         private readonly AtelierProDbContext _context;
         private readonly ILogger<CatalogosController> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
 
         public CatalogosController(
             AlmacenService almacenService,
             AtelierProDbContext context,
             ILogger<CatalogosController> logger,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IHttpClientFactory httpClientFactory)
         {
             _almacenService = almacenService ?? throw new ArgumentNullException(nameof(almacenService));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             
             _catalogosManager = new CatalogosManager();
 
@@ -50,11 +53,8 @@ namespace AtelierPro.Controllers
 
         private void InicializarServicios()
         {
-            // Obtener URL de la API de configuración
-            var apiUrl = _configuration.GetValue<string>("CatalogosAPI:BaseUrl") ?? "http://localhost:5000";
-            
-            // FinditParts
-            var finditPartsService = new FinditPartsCatalogoService(apiUrl);
+            // FinditParts - usando HttpClient inyectado
+            var finditPartsService = new FinditPartsCatalogoService(_httpClientFactory.CreateClient("FinditParts"));
             _catalogosManager.RegistrarServicio(finditPartsService);
 
             // Agregar más proveedores aquí cuando estén disponibles:

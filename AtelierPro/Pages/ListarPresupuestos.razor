@@ -1,6 +1,7 @@
-@page "/presupuestos"
+@page "/presupuestos/listar"
 @using AtelierPro.Models
 @using AtelierPro.Services
+@attribute [Authorize]
 @inject PresupuestoRepository PresupuestoRepo
 
 <PageTitle>Presupuestos</PageTitle>
@@ -45,7 +46,7 @@ else
                     <td>@presupuesto.Items.Count</td>
                     <td>@presupuesto.Subtotal.ToString("C2")</td>
                     <td>@presupuesto.IvaAplicado.ToString("C2")</td>
-                    <td>@presupuesto.TotalFinal.ToString("C2")</td>
+                    <td>@presupuesto.Total.ToString("C2")</td>
                     <td>
                         <span class="badge @GetEstadoBadgeClass(presupuesto.Estado)">
                             @presupuesto.Estado

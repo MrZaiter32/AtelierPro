@@ -90,7 +90,7 @@ public class AtelierProDbContext : IdentityDbContext<ApplicationUser, Applicatio
             entity.HasKey(e => e.Id);
             entity.Ignore(e => e.Subtotal);
             entity.Property(e => e.IvaAplicado).HasPrecision(18, 2);
-            entity.Property(e => e.TotalFinal).HasPrecision(18, 2);
+            entity.Property(e => e.Total).HasPrecision(18, 2);
             entity.HasOne(e => e.Vehiculo)
                 .WithMany()
                 .OnDelete(DeleteBehavior.Cascade);

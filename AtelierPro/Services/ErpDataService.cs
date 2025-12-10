@@ -76,7 +76,7 @@ public sealed class ErpDataService
         
         // Calcular totales manualmente sin usar PresupuestoService
         presupuesto.IvaAplicado = presupuesto.Subtotal * _tarifaBase.TasaIva;
-        presupuesto.TotalFinal = presupuesto.Subtotal + presupuesto.IvaAplicado;
+        presupuesto.Total = presupuesto.Subtotal + presupuesto.IvaAplicado;
         presupuesto.Estado = EstadoPresupuesto.Aprobado;
         
         _presupuestos.Add(presupuesto);
@@ -198,7 +198,7 @@ public sealed class ErpDataService
         _facturas.Add(new FacturaCliente
         {
             PresupuestoId = presupuesto.Id,
-            Importe = presupuesto.TotalFinal,
+            Importe = presupuesto.Total,
             FechaEmision = DateTime.UtcNow,
             Pagada = false
         });

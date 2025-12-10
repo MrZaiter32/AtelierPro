@@ -1,6 +1,4 @@
-﻿<MudThemeProvider />
-<MudDialogProvider />
-<MudSnackbarProvider MaxDisplayedSnackbars="5" PreventDuplicates="true" ShowCloseIcon="true">
+﻿<CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
             <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
@@ -13,4 +11,4 @@
             </LayoutView>
         </NotFound>
     </Router>
-</MudSnackbarProvider>
+</CascadingAuthenticationState>

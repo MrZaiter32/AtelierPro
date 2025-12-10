@@ -2,6 +2,7 @@
 @using System.Text.Json
 @using System.Text
 @inject HttpClient HttpClient
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
 
 <PageTitle>Test Catálogos Simple</PageTitle>
 

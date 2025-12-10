@@ -1,0 +1,36 @@
+@page "/diagnostico"
+@using System.Diagnostics
+
+<h1>Diagnóstico de Blazor</h1>
+
+<div style="margin: 20px; font-family: monospace;">
+    <p><strong>Estado:</strong> Página cargada correctamente ✅</p>
+    <p><strong>Datetime:</strong> @DateTime.Now</p>
+    <p><strong>Ambiente:</strong> @Environment.MachineName</p>
+    
+    <h3>Esto debería ser visible en azul:</h3>
+    <div style="background-color: #007bff; color: white; padding: 20px; margin: 10px 0;">
+        Si ves esto, Blazor está funcionando correctamente
+    </div>
+    
+    <h3>Test de Interactividad:</h3>
+    <button @onclick="Incrementar" style="padding: 10px 20px; font-size: 16px;">
+        Clicado @contador veces
+    </button>
+    
+    <h3>Información del Sistema:</h3>
+    <ul>
+        <li>OS: @System.Runtime.InteropServices.RuntimeInformation.OSDescription</li>
+        <li>.NET: @System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription</li>
+        <li>Procesadores: @Environment.ProcessorCount</li>
+    </ul>
+</div>
+
+@code {
+    private int contador = 0;
+    
+    private void Incrementar()
+    {
+        contador++;
+    }
+}

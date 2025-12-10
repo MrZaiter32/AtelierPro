@@ -1,72 +1,234 @@
 @page "/taller/ordenes"
+@page "/taller/listar-ordenes"
+@using System.ComponentModel.DataAnnotations
 @using AtelierPro.Models
 @using AtelierPro.Services
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
 @inject TallerService TallerService
-@attribute [Authorize(Roles = "Admin,Finanzas,Taller,Cliente")]
+@inject NavigationManager NavigationManager
+@inject BusyService Busy
 
 <PageTitle>Órdenes de Reparación - AtelierPro</PageTitle>
 
 <div class="container-fluid mt-4">
-    <h1><span class="oi oi-wrench me-2"></span>Órdenes de Reparación</h1>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><span class="oi oi-list me-2"></span>Órdenes de Reparación</h2>
+                    <p class="text-muted">Gestión de órdenes de reparación del taller.</p>
+                </div>
+                <a href="/taller/crear-orden" class="btn btn-primary">
+                    <span class="oi oi-plus me-2"></span>Nueva Orden
+                </a>
+            </div>
+        </div>
+    </div>
 
     @if (cargando)
     {
-        <div class="alert alert-info">Cargando...</div>
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>Cargando órdenes...
+        </div>
     }
-    else if (error != null)
+    else if (!string.IsNullOrEmpty(mensajeError))
     {
-        <div class="alert alert-danger">@error</div>
-    }
-    else if (ordenes?.Any() != true)
-    {
-        <div class="alert alert-warning">Sin órdenes</div>
+        <div class="alert alert-danger alert-dismissible fade show">
+            @mensajeError
+            <button type="button" class="btn-close" @onclick="() => mensajeError = null"></button>
+        </div>
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <thead class="table-dark">
-                    <tr>
-                        <th>ID</th>
-                        <th>Presupuesto</th>
-                        <th>Estado</th>
-                        <th>Técnico</th>
-                        <th>Horas Est.</th>
-                        <th>Horas Real.</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var orden in ordenes)
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label class="form-label">Filtrar por estado</label>
+                <select class="form-select" @onchange="@((ChangeEventArgs e) => FiltrarPorEstado((string)e.Value))">
+                    <option value="">-- Todos --</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="EnCurso">En Curso</option>
+                    <option value="Completada">Completada</option>
+                    <option value="Cancelada">Cancelada</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Filtrar por técnico</label>
+                <select class="form-select" @onchange="@((ChangeEventArgs e) => FiltrarPorTecnico((string)e.Value))">
+                    <option value="">-- Todos --</option>
+                    @if (tecnicosDisponibles.Any())
                     {
-                        <tr>
-                            <td>@orden.Id.ToString().Substring(0, 8)</td>
-                            <td>@orden.PresupuestoId.ToString().Substring(0, 8)</td>
-                            <td><span class="badge @GetBadgeClass(orden.Estado)">@orden.Estado</span></td>
-                            <td>@(orden.TecnicoAsignado?.Nombre ?? "Sin asignar")</td>
-                            <td>@orden.HorasEstimadas</td>
-                            <td>@orden.HorasReales</td>
-                        </tr>
+                        @foreach (var tec in tecnicosDisponibles)
+                        {
+                            <option value="@tec.Id">@tec.NombreCompleto</option>
+                        }
                     }
-                </tbody>
-            </table>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Buscar por ID o Cliente</label>
+                <input type="text" class="form-control" placeholder="Ej: ID o cliente"
+                       @bind="busquedaTexto" @onkeyup="@((KeyboardEventArgs e) => BuscarOrdenes())" />
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-secondary w-100" @onclick="LimpiarFiltros">
+                    <span class="oi oi-reload me-2"></span>Limpiar Filtros
+                </button>
+            </div>
         </div>
+
+        @if (!ordenesFiltradas.Any())
+        {
+            <div class="alert alert-info">
+                No hay órdenes de reparación. <a href="/taller/crear-orden">Crea una nueva</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Cliente</th>
+                            <th>Presupuesto</th>
+                            <th>Técnico</th>
+                            <th>Estado</th>
+                            <th>Horas (Est/Real)</th>
+                            <th>Prioridad</th>
+                            <th>Fecha Creación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var orden in ordenesFiltradas)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge bg-info" title="@orden.Id">
+                                        @orden.Id.ToString().Substring(0, 8)...
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (presupuestosMap.TryGetValue(orden.PresupuestoId, out var presupuesto))
+                                    {
+                                        <strong>@presupuesto?.Cliente?.Nombre</strong>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (presupuestosMap.TryGetValue(orden.PresupuestoId, out var pres))
+                                    {
+                                        <span class="badge bg-secondary">@pres?.Total.ToString("C")</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (orden.TecnicoId.HasValue && tecnicosMap.TryGetValue(orden.TecnicoId.Value, out var tecnico))
+                                    {
+                                        <strong>@tecnico.NombreCompleto</strong>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Sin asignar</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="@GetEstadoBadgeClass(orden.Estado)">@orden.Estado</span>
+                                </td>
+                                <td>
+                                    @orden.HorasEstimadas.ToString("F1") / @orden.HorasReales.ToString("F1")
+                                </td>
+                                <td>
+                                    <span class="@GetPrioridadBadgeClass(orden.Prioridad)">@orden.Prioridad</span>
+                                </td>
+                                <td>
+                                    <small>@orden.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/taller/editar-orden/@orden.Id" class="btn btn-primary" title="Editar">
+                                            <span class="oi oi-pencil"></span>
+                                        </a>
+                                        @if (orden.Estado == EstadoOrdenReparacion.Pendiente)
+                                        {
+                                            <button type="button" class="btn btn-warning" title="Iniciar"
+                                                    @onclick="() => CambiarEstado(orden.Id, EstadoOrdenReparacion.EnCurso)">
+                                                <span class="oi oi-media-play"></span>
+                                            </button>
+                                        }
+                                        @if (orden.Estado == EstadoOrdenReparacion.EnCurso)
+                                        {
+                                            <button type="button" class="btn btn-success" title="Completar"
+                                                    @onclick="() => CambiarEstado(orden.Id, EstadoOrdenReparacion.Completada)">
+                                                <span class="oi oi-check"></span>
+                                            </button>
+                                        }
+                                        @if (orden.Estado != EstadoOrdenReparacion.Cancelada)
+                                        {
+                                            <button type="button" class="btn btn-danger" title="Cancelar"
+                                                    @onclick="() => CambiarEstado(orden.Id, EstadoOrdenReparacion.Cancelada)">
+                                                <span class="oi oi-x"></span>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item @(paginaActual == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => CambiarPagina(paginaActual - 1)">Anterior</button>
+                    </li>
+                    @for (int i = 1; i <= totalPaginas; i++)
+                    {
+                        var pageNum = i;
+                        <li class="page-item @(paginaActual == pageNum ? "active" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(pageNum)">@pageNum</button>
+                        </li>
+                    }
+                    <li class="page-item @(paginaActual == totalPaginas ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => CambiarPagina(paginaActual + 1)">Siguiente</button>
+                    </li>
+                </ul>
+            </nav>
+        }
     }
 </div>
 
 @code {
-    private List<OrdenReparacion>? ordenes;
+    private List<OrdenReparacion> ordenes = new();
+    private List<OrdenReparacion> ordenesFiltradas = new();
+    private Dictionary<Guid, Presupuesto> presupuestosMap = new();
+    private Dictionary<Guid, Tecnico> tecnicosMap = new();
+    private List<Tecnico> tecnicosDisponibles = new();
+    
+    private string busquedaTexto = string.Empty;
+    private string filtroEstado = string.Empty;
+    private string filtroTecnico = string.Empty;
+    
+    private string? mensajeError;
     private bool cargando = true;
-    private string? error;
+    
+    private int paginaActual = 1;
+    private const int ItemsPorPagina = 10;
+    private int totalPaginas = 1;
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = Busy.Start("Cargando órdenes...");
         try
         {
-            ordenes = (await TallerService.ObtenerOrdenesReparacionAsync()).ToList();
+            await CargarDatos();
         }
         catch (Exception ex)
         {
-            error = ex.Message;
+            mensajeError = $"Error cargando datos: {ex.Message}";
         }
         finally
         {
@@ -74,13 +236,143 @@
         }
     }
 
-    private string GetBadgeClass(EstadoOrdenReparacion estado) => estado switch
+    private async Task CargarDatos()
     {
-        EstadoOrdenReparacion.Pendiente => "bg-secondary",
-        EstadoOrdenReparacion.EnCurso => "bg-info",
-        EstadoOrdenReparacion.Completada => "bg-success",
-        EstadoOrdenReparacion.Facturada => "bg-primary",
-        EstadoOrdenReparacion.Cancelada => "bg-danger",
-        _ => "bg-secondary"
+        try
+        {
+            // Cargar órdenes
+            ordenes = (await TallerService.ObtenerOrdenesReparacionAsync()).ToList();
+            
+            // Cargar técnicos
+            tecnicosDisponibles = (await TallerService.ObtenerTecnicosAsync(soloActivos: true)).ToList();
+            tecnicosMap = tecnicosDisponibles.ToDictionary(t => t.Id);
+            
+            // Cargar presupuestos (si hay una forma de obtenerlos del servicio)
+            // Por ahora, extraer de las órdenes
+            foreach (var orden in ordenes)
+            {
+                if (!presupuestosMap.ContainsKey(orden.PresupuestoId))
+                {
+                    // Aquí deberías cargar el presupuesto desde la BD
+                    // Por ahora, lo dejaremos vacío
+                    presupuestosMap[orden.PresupuestoId] = null;
+                }
+            }
+            
+            FiltrarOrdenes();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Error cargando datos: {ex.Message}");
+        }
+    }
+
+    private void FiltrarOrdenes()
+    {
+        var resultado = ordenes.AsEnumerable();
+        
+        // Filtrar por estado
+        if (!string.IsNullOrEmpty(filtroEstado))
+        {
+            if (Enum.TryParse<EstadoOrdenReparacion>(filtroEstado, out var estado))
+                resultado = resultado.Where(o => o.Estado == estado);
+        }
+        
+        // Filtrar por técnico
+        if (!string.IsNullOrEmpty(filtroTecnico) && Guid.TryParse(filtroTecnico, out var tecnicoId))
+        {
+            resultado = resultado.Where(o => o.TecnicoId == tecnicoId);
+        }
+        
+        // Buscar por texto
+        if (!string.IsNullOrEmpty(busquedaTexto))
+        {
+            var texto = busquedaTexto.ToLower();
+            resultado = resultado.Where(o => 
+                o.Id.ToString().Contains(texto) ||
+                (presupuestosMap.TryGetValue(o.PresupuestoId, out var p) && 
+                 p?.Cliente?.Nombre.ToLower().Contains(texto) == true)
+            );
+        }
+        
+        // Ordenar por fecha descendente
+        resultado = resultado.OrderByDescending(o => o.FechaCreacion);
+        
+        // Aplicar paginación
+        totalPaginas = (int)Math.Ceiling((decimal)resultado.Count() / ItemsPorPagina);
+        if (paginaActual > totalPaginas && totalPaginas > 0)
+            paginaActual = totalPaginas;
+        
+        ordenesFiltradas = resultado
+            .Skip((paginaActual - 1) * ItemsPorPagina)
+            .Take(ItemsPorPagina)
+            .ToList();
+    }
+
+    private void FiltrarPorEstado(string estado)
+    {
+        filtroEstado = estado;
+        paginaActual = 1;
+        FiltrarOrdenes();
+    }
+
+    private void FiltrarPorTecnico(string tecnico)
+    {
+        filtroTecnico = tecnico;
+        paginaActual = 1;
+        FiltrarOrdenes();
+    }
+
+    private void BuscarOrdenes()
+    {
+        paginaActual = 1;
+        FiltrarOrdenes();
+    }
+
+    private void CambiarPagina(int pagina)
+    {
+        paginaActual = pagina;
+        FiltrarOrdenes();
+    }
+
+    private void LimpiarFiltros()
+    {
+        busquedaTexto = string.Empty;
+        filtroEstado = string.Empty;
+        filtroTecnico = string.Empty;
+        paginaActual = 1;
+        FiltrarOrdenes();
+    }
+
+    private async Task CambiarEstado(Guid ordenId, EstadoOrdenReparacion nuevoEstado)
+    {
+        try
+        {
+            using var _ = Busy.Start("Actualizando estado...");
+            await TallerService.CambiarEstadoAsync(ordenId, nuevoEstado);
+            await CargarDatos();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error: {ex.Message}";
+        }
+    }
+
+    private string GetEstadoBadgeClass(EstadoOrdenReparacion estado) => estado switch
+    {
+        EstadoOrdenReparacion.Pendiente => "badge bg-warning text-dark",
+        EstadoOrdenReparacion.EnCurso => "badge bg-info",
+        EstadoOrdenReparacion.Completada => "badge bg-success",
+        EstadoOrdenReparacion.Cancelada => "badge bg-danger",
+        _ => "badge bg-secondary"
+    };
+
+    private string GetPrioridadBadgeClass(string prioridad) => prioridad switch
+    {
+        "Baja" => "badge bg-light text-dark",
+        "Normal" => "badge bg-secondary",
+        "Alta" => "badge bg-warning text-dark",
+        "Urgente" => "badge bg-danger",
+        _ => "badge bg-secondary"
     };
 }

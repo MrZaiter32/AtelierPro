@@ -4,6 +4,7 @@
 @using AtelierPro.Services
 @inject TallerService TallerService
 @inject NavigationManager Navigation
+@inject BusyService Busy
 @attribute [Authorize(Roles = "Admin,Finanzas,Taller,Cliente")]
 
 <PageTitle>Detalle de Orden - AtelierPro</PageTitle>
@@ -182,6 +183,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = Busy.Start("Cargando detalle de orden...");
         try
         {
             if (Guid.TryParse(Id, out var ordenId))

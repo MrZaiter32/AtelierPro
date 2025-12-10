@@ -2,86 +2,364 @@
 @using AtelierPro.Models
 @using AtelierPro.Services
 @inject AlmacenService AlmacenService
-@attribute [Authorize(Roles = "Admin,Finanzas,Taller")]
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Admin,Finanzas,Taller,Almacen")]
 
 <PageTitle>Refacciones - AtelierPro</PageTitle>
 
 <div class="container-fluid mt-4">
-    <h1><span class="oi oi-box me-2"></span>Refacciones</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><span class="oi oi-box me-2"></span>Refacciones</h1>
+        <a href="/almacen/crear-refaccion" class="btn btn-primary">
+            <span class="oi oi-plus me-2"></span>Nueva Refacción
+        </a>
+    </div>
 
     @if (cargando)
     {
-        <div class="alert alert-info">Cargando...</div>
+        <div class="alert alert-info">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Cargando refacciones...
+        </div>
     }
     else if (error != null)
     {
         <div class="alert alert-danger">@error</div>
     }
-    else if (refacciones?.Any() != true)
-    {
-        <div class="alert alert-warning">Sin refacciones</div>
-    }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <thead class="table-dark">
-                    <tr>
-                        <th>SKU</th>
-                        <th>Nombre</th>
-                        <th>Stock Actual</th>
-                        <th>Stock Mín.</th>
-                        <th>Stock Máx.</th>
-                        <th>Precio Venta</th>
-                        <th>Categoría</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var refaccion in refacciones)
-                    {
-                        <tr>
-                            <td><strong>@refaccion.Sku</strong></td>
-                            <td>@refaccion.Nombre</td>
-                            <td>
-                                @if (refaccion.StockActual < refaccion.StockMinimo)
-                                {
-                                    <span class="badge bg-danger">@refaccion.StockActual</span>
-                                }
-                                else
-                                {
-                                    <span>@refaccion.StockActual</span>
-                                }
-                            </td>
-                            <td>@refaccion.StockMinimo</td>
-                            <td>@refaccion.StockMaximo</td>
-                            <td>@refaccion.PrecioVenta.ToString("C")</td>
-                            <td>@refaccion.Categoria</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+        <!-- Filtros -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">🔍 Buscar (SKU/Nombre)</label>
+                        <input type="text" class="form-control" @bind="busqueda" @bind:event="oninput" placeholder="Ej: REF-001" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">📁 Categoría</label>
+                        <select class="form-control" @bind="categoria">
+                            <option value="">-- Todas --</option>
+                            <option value="Motor">Motor</option>
+                            <option value="Eléctrica">Eléctrica</option>
+                            <option value="Carrocería">Carrocería</option>
+                            <option value="Suspensión">Suspensión</option>
+                            <option value="Frenos">Frenos</option>
+                            <option value="Transmisión">Transmisión</option>
+                            <option value="Combustible">Combustible</option>
+                            <option value="Refrigeración">Refrigeración</option>
+                            <option value="Lubricación">Lubricación</option>
+                            <option value="Otra">Otra</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">⚠ Filtro Stock</label>
+                        <select class="form-control" @bind="filtroStock">
+                            <option value="">-- Todos --</option>
+                            <option value="bajo">Stock Bajo</option>
+                            <option value="normal">Stock Normal</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-secondary w-100" @onclick="LimpiarFiltros">
+                            <span class="oi oi-reload-8 me-1"></span>Limpiar
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <!-- Estadísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">Total Refacciones</h6>
+                        <h2 class="text-primary">@totalItems</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">Stock Bajo</h6>
+                        <h2 class="text-warning">@stockBajo</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">Stock Crítico</h6>
+                        <h2 class="text-danger">@stockCritico</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">Valor Total</h6>
+                        <h2 class="text-success">@valorTotal.ToString("C")</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        @if (refacciones?.Any() != true)
+        {
+            <div class="alert alert-warning">
+                <span class="oi oi-inbox me-2"></span>Sin refacciones para mostrar
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>SKU</th>
+                            <th>Nombre</th>
+                            <th>Categoría</th>
+                            <th class="text-end">Stock Actual</th>
+                            <th class="text-end">Mín/Máx</th>
+                            <th class="text-end">Precio Venta</th>
+                            <th>Ubicación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var refaccion in refacciones)
+                        {
+                            <tr>
+                                <td><strong>@refaccion.Sku</strong></td>
+                                <td>@refaccion.Nombre</td>
+                                <td>
+                                    <span class="badge bg-secondary">@refaccion.Categoria</span>
+                                </td>
+                                <td class="text-end">
+                                    @if (refaccion.StockActual < refaccion.StockMinimo)
+                                    {
+                                        <span class="badge bg-danger">@refaccion.StockActual</span>
+                                        <span class="text-danger ms-1">⚠</span>
+                                    }
+                                    else if (refaccion.StockActual <= 0)
+                                    {
+                                        <span class="badge bg-danger">0</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">@refaccion.StockActual</span>
+                                    }
+                                </td>
+                                <td class="text-end small">
+                                    @refaccion.StockMinimo / @refaccion.StockMaximo
+                                </td>
+                                <td class="text-end">
+                                    @refaccion.PrecioVenta.ToString("C")
+                                </td>
+                                <td>
+                                    <small class="text-muted">@refaccion.Ubicacion</small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" @onclick="() => MostrarDetalles(refaccion)" title="Ver detalles">
+                                        <span class="oi oi-eye"></span>
+                                    </button>
+                                    <a href="/almacen/editar-refaccion/@refaccion.Id" class="btn btn-sm btn-warning" title="Editar">
+                                        <span class="oi oi-pencil"></span>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <nav aria-label="Paginación" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(paginaActual == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="PaginaAnterior" disabled="@(paginaActual == 1)">Anterior</button>
+                    </li>
+
+                    @for (int i = 1; i <= totalPaginas; i++)
+                    {
+                        int pageNum = i;
+                        <li class="page-item @(paginaActual == pageNum ? "active" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(pageNum)">@pageNum</button>
+                        </li>
+                    }
+
+                    <li class="page-item @(paginaActual == totalPaginas ? "disabled" : "")">
+                        <button class="page-link" @onclick="PaginaSiguiente" disabled="@(paginaActual == totalPaginas)">Siguiente</button>
+                    </li>
+                </ul>
+            </nav>
+        }
     }
 </div>
 
+<!-- Modal de Detalles -->
+@if (refaccionSeleccionada != null)
+{
+    <div class="modal fade show" id="modalDetalles" style="display: block; background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@refaccionSeleccionada.Nombre</h5>
+                    <button type="button" class="btn-close" @onclick="() => refaccionSeleccionada = null"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>SKU:</strong> @refaccionSeleccionada.Sku</p>
+                            <p><strong>Categoría:</strong> @refaccionSeleccionada.Categoria</p>
+                            <p><strong>Descripción:</strong> @refaccionSeleccionada.Descripcion</p>
+                            <p><strong>Ubicación:</strong> @refaccionSeleccionada.Ubicacion</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Stock Actual:</strong>
+                                @if (refaccionSeleccionada.StockActual < refaccionSeleccionada.StockMinimo)
+                                {
+                                    <span class="badge bg-danger">@refaccionSeleccionada.StockActual ⚠</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">@refaccionSeleccionada.StockActual</span>
+                                }
+                            </p>
+                            <p><strong>Límites:</strong> @refaccionSeleccionada.StockMinimo - @refaccionSeleccionada.StockMaximo</p>
+                            <p><strong>Costo:</strong> @refaccionSeleccionada.CostoPromedio.ToString("C")</p>
+                            <p><strong>Precio Venta:</strong> @refaccionSeleccionada.PrecioVenta.ToString("C")</p>
+                        </div>
+                    </div>
+                    <hr />
+                    <p><strong>Estado:</strong> <span class="badge @(refaccionSeleccionada.Activa ? "bg-success" : "bg-secondary")">@(refaccionSeleccionada.Activa ? "Activa" : "Inactiva")</span></p>
+                    <p><small class="text-muted">Actualizada: @refaccionSeleccionada.FechaActualizacion:g</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => refaccionSeleccionada = null">Cerrar</button>
+                    <a href="/almacen/editar-refaccion/@refaccionSeleccionada.Id" class="btn btn-primary">
+                        <span class="oi oi-pencil me-1"></span>Editar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Refaccion>? refacciones;
+    private Refaccion? refaccionSeleccionada;
     private bool cargando = true;
     private string? error;
 
+    // Filtros
+    private string busqueda = string.Empty;
+    private string categoria = string.Empty;
+    private string filtroStock = string.Empty;
+
+    // Paginación
+    private int paginaActual = 1;
+    private int pageSize = 15;
+    private int totalItems;
+    private int totalPaginas;
+
+    // Estadísticas
+    private int stockBajo;
+    private int stockCritico;
+    private decimal valorTotal;
+
     protected override async Task OnInitializedAsync()
+    {
+        await CargarRefacciones();
+        await CargarEstadisticas();
+    }
+
+    private async Task CargarRefacciones()
     {
         try
         {
-            refacciones = (await AlmacenService.ObtenerRefaccionesAsync()).ToList();
+            cargando = true;
+            error = null;
+
+            bool? alertaStock = null;
+            if (filtroStock == "bajo")
+                alertaStock = true;
+            else if (filtroStock == "normal")
+                alertaStock = false;
+
+            var resultado = await AlmacenService.ObtenerRefaccionesLazyAsync(
+                busqueda: string.IsNullOrWhiteSpace(busqueda) ? null : busqueda,
+                categoria: string.IsNullOrWhiteSpace(categoria) ? null : categoria,
+                alertaStock: alertaStock,
+                pagina: paginaActual,
+                pageSize: pageSize);
+
+            refacciones = resultado.Items;
+            totalItems = resultado.TotalItems;
+            totalPaginas = resultado.TotalPaginas;
         }
         catch (Exception ex)
         {
-            error = ex.Message;
+            error = $"Error al cargar refacciones: {ex.Message}";
         }
         finally
         {
             cargando = false;
         }
+    }
+
+    private async Task CargarEstadisticas()
+    {
+        try
+        {
+            var todas = await AlmacenService.ObtenerRefaccionesAsync(soloActivas: true);
+            var bajo = await AlmacenService.ObtenerRefaccionesStockBajoAsync();
+            var critico = await AlmacenService.ObtenerRefaccionesCriticasAsync();
+            
+            stockBajo = bajo.Count();
+            stockCritico = critico.Count();
+            valorTotal = await AlmacenService.ObtenerValorTotalInventarioAsync();
+        }
+        catch
+        {
+            // Silenciosamente ignorar errores en estadísticas
+        }
+    }
+
+    private async Task CambiarPagina(int pagina)
+    {
+        paginaActual = pagina;
+        await CargarRefacciones();
+    }
+
+    private async Task PaginaAnterior()
+    {
+        if (paginaActual > 1)
+            await CambiarPagina(paginaActual - 1);
+    }
+
+    private async Task PaginaSiguiente()
+    {
+        if (paginaActual < totalPaginas)
+            await CambiarPagina(paginaActual + 1);
+    }
+
+    private async Task LimpiarFiltros()
+    {
+        busqueda = string.Empty;
+        categoria = string.Empty;
+        filtroStock = string.Empty;
+        paginaActual = 1;
+        await CargarRefacciones();
+    }
+
+    private void MostrarDetalles(Refaccion refaccion)
+    {
+        refaccionSeleccionada = refaccion;
     }
 }

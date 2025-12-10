@@ -4,6 +4,7 @@
 @using AtelierPro.Services
 @attribute [Authorize(Roles = "Admin,Finanzas")]
 @inject ComprasService ComprasService
+@inject BusyService Busy
 
 <PageTitle>Crear Orden de Compra - AtelierPro</PageTitle>
 
@@ -12,9 +13,9 @@
         <div class="col-md-12">
             <h2>
                 <span class="oi oi-plus"></span>
-                Crear Orden de Compra (MVP lecturas)
+                Crear Orden de Compra
             </h2>
-            <p class="text-muted">Versión simplificada: muestra proveedores activos y refacciones para planear la orden. La creación interactiva se completará en la siguiente iteración.</p>
+            <p class="text-muted">Selecciona proveedor, agrega refacciones y genera la orden con cálculo de IVA.</p>
         </div>
     </div>
 
@@ -33,8 +34,83 @@
     }
     else
     {
+        @if (!string.IsNullOrWhiteSpace(mensajeExito))
+        {
+            <div class="alert alert-success">@mensajeExito</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(mensajeError))
+        {
+            <div class="alert alert-danger">@mensajeError</div>
+        }
+
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>Datos de la orden</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label">Proveedor</label>
+                                <select class="form-select" @bind="proveedorSeleccionado">
+                                    <option value="">-- Selecciona proveedor --</option>
+                                    @foreach (var prov in proveedores)
+                                    {
+                                        <option value="@prov.Id">@prov.RazonSocial (@prov.CalificacionPromedio.ToString("0.0")★)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Observaciones</label>
+                                <input class="form-control" @bind="observaciones" placeholder="Opcional" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <strong>Agregar ítems</strong>
+                        <span class="badge bg-secondary">@refacciones.Count refacciones</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label">Refacción</label>
+                                <select class="form-select" @bind="refaccionSeleccionada">
+                                    <option value="">-- Selecciona refacción --</option>
+                                    @foreach (var r in refacciones)
+                                    {
+                                        <option value="@r.Id">@r.Sku - @r.Nombre (@r.StockActual en stock)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Cantidad</label>
+                                <input type="number" min="1" class="form-control" @bind="cantidad" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Precio unitario</label>
+                                <input type="number" step="0.01" min="0" class="form-control" @bind="precioUnitario" />
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" @onclick="AgregarItem">
+                                    <span class="oi oi-plus me-1"></span> Agregar ítem
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-7 mb-3">
                 <div class="card h-100">
                     <div class="card-header bg-light">
                         <strong>Proveedores activos</strong>
@@ -57,7 +133,7 @@
                                 {
                                     @foreach (var prov in proveedores)
                                     {
-                                        <tr>
+                                        <tr class="@(proveedorSeleccionado == prov.Id ? "table-primary" : string.Empty)">
                                             <td>@prov.RazonSocial</td>
                                             <td>@prov.CalificacionPromedio.ToString("0.0") ★</td>
                                             <td>@prov.CondicionesPago</td>
@@ -69,44 +145,66 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-5 mb-3">
                 <div class="card h-100">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <strong>Refacciones</strong>
-                        <span class="badge bg-secondary">@refacciones.Count disponibles</span>
+                        <strong>Ítems de la orden</strong>
+                        <span class="badge bg-secondary">@itemsOrden.Count ítems</span>
                     </div>
                     <div class="card-body p-0">
-                        <table class="table table-sm mb-0">
-                            <thead>
-                                <tr>
-                                    <th>SKU</th>
-                                    <th>Nombre</th>
-                                    <th>Stock</th>
-                                    <th>Precio</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @if (refacciones.Count == 0)
-                                {
-                                    <tr><td colspan="4" class="text-center text-muted">Sin refacciones</td></tr>
-                                }
-                                else
-                                {
-                                    @foreach (var r in refacciones.Take(15))
+                        @if (!itemsOrden.Any())
+                        {
+                            <div class="p-3 text-muted">Agrega al menos un ítem para crear la orden.</div>
+                        }
+                        else
+                        {
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Cant.</th>
+                                        <th>Precio</th>
+                                        <th>Subtotal</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in itemsOrden)
                                     {
                                         <tr>
-                                            <td>@r.Sku</td>
-                                            <td>@r.Nombre</td>
-                                            <td>@r.StockActual</td>
-                                            <td>@r.PrecioVenta.ToString("C")</td>
+                                            <td>
+                                                <div class="fw-semibold">@item.Sku</div>
+                                                <div class="text-muted small">@item.Nombre</div>
+                                            </td>
+                                            <td>@item.Cantidad</td>
+                                            <td>@item.PrecioUnitario.ToString("C")</td>
+                                            <td>@(item.Cantidad * item.PrecioUnitario).ToString("C")</td>
+                                            <td>
+                                                <button class="btn btn-link text-danger btn-sm" @onclick="() => RemoverItem(item)">
+                                                    <span class="oi oi-trash"></span>
+                                                </button>
+                                            </td>
                                         </tr>
                                     }
-                                }
-                            </tbody>
-                        </table>
-                        @if (refacciones.Count > 15)
-                        {
-                            <div class="p-2 text-muted small">Mostrando 15 de @refacciones.Count</div>
+                                </tbody>
+                            </table>
+                            <div class="p-3 border-top">
+                                <div class="d-flex justify-content-between">
+                                    <span>Subtotal</span>
+                                    <strong>@subtotal.ToString("C")</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>IVA 16%</span>
+                                    <strong>@iva.ToString("C")</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Total</span>
+                                    <strong>@total.ToString("C")</strong>
+                                </div>
+                                <button class="btn btn-success w-100 mt-3" @onclick="CrearOrden" disabled="@(itemsOrden.Count == 0 || proveedorSeleccionado == null)">
+                                    <span class="oi oi-check me-1"></span> Crear orden de compra
+                                </button>
+                            </div>
                         }
                     </div>
                 </div>
@@ -118,13 +216,27 @@
 @code {
     private List<Proveedor> proveedores = new();
     private List<Refaccion> refacciones = new();
+    private List<ItemOrdenVm> itemsOrden = new();
+    private Guid? proveedorSeleccionado;
+    private Guid? refaccionSeleccionada;
+    private int cantidad = 1;
+    private decimal precioUnitario;
+    private string observaciones = string.Empty;
+    private string? mensajeExito;
+    private string? mensajeError;
     private bool cargando = true;
     private bool error = false;
 
+    private decimal subtotal => itemsOrden.Sum(i => i.Cantidad * i.PrecioUnitario);
+    private decimal iva => Math.Round(subtotal * 0.16m, 2);
+    private decimal total => subtotal + iva;
+
     [Inject] private Services.AlmacenService AlmacenService { get; set; } = default!;
+    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = Busy.Start("Cargando proveedores y refacciones...");
         try
         {
             proveedores = (await ComprasService.ObtenerProveedoresAsync(soloActivos: true)).ToList();
@@ -138,5 +250,98 @@
         {
             cargando = false;
         }
+    }
+
+    private void AgregarItem()
+    {
+        mensajeError = null;
+        if (refaccionSeleccionada == null)
+        {
+            mensajeError = "Selecciona una refacción";
+            return;
+        }
+        if (cantidad <= 0)
+        {
+            mensajeError = "La cantidad debe ser mayor a cero";
+            return;
+        }
+
+        var refaccion = refacciones.FirstOrDefault(r => r.Id == refaccionSeleccionada);
+        if (refaccion == null)
+        {
+            mensajeError = "Refacción no encontrada";
+            return;
+        }
+
+        var precio = precioUnitario > 0 ? precioUnitario : refaccion.PrecioVenta;
+        itemsOrden.Add(new ItemOrdenVm
+        {
+            RefaccionId = refaccion.Id,
+            Sku = refaccion.Sku,
+            Nombre = refaccion.Nombre,
+            Cantidad = cantidad,
+            PrecioUnitario = precio
+        });
+
+        // reset inputs
+        refaccionSeleccionada = null;
+        cantidad = 1;
+        precioUnitario = 0;
+    }
+
+    private void RemoverItem(ItemOrdenVm item)
+    {
+        itemsOrden.Remove(item);
+    }
+
+    private async Task CrearOrden()
+    {
+        mensajeError = null;
+        mensajeExito = null;
+
+        if (proveedorSeleccionado == null)
+        {
+            mensajeError = "Selecciona un proveedor";
+            return;
+        }
+        if (!itemsOrden.Any())
+        {
+            mensajeError = "Agrega al menos un ítem";
+            return;
+        }
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userId = authState.User?.Identity?.Name ?? "sistema";
+
+        using var _ = Busy.Start("Creando orden de compra...");
+        try
+        {
+            var items = itemsOrden
+                .Select(i => (i.RefaccionId, i.Cantidad, i.PrecioUnitario))
+                .ToList();
+
+            var orden = await ComprasService.CrearOrdenCompraAsync(
+                proveedorSeleccionado.Value,
+                items,
+                userId,
+                observaciones);
+
+            mensajeExito = $"Orden {orden.Numero} creada correctamente (Total: {orden.Total:C})";
+            itemsOrden.Clear();
+            observaciones = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = ex.Message;
+        }
+    }
+
+    private class ItemOrdenVm
+    {
+        public Guid RefaccionId { get; set; }
+        public string Sku { get; set; } = string.Empty;
+        public string Nombre { get; set; } = string.Empty;
+        public int Cantidad { get; set; }
+        public decimal PrecioUnitario { get; set; }
     }
 }

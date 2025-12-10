@@ -1,4 +1,7 @@
 @page "/auth/logout"
+@using AtelierPro.Services
+@attribute [Authorize]
+@inject AuthService AuthService
 @inject NavigationManager NavigationManager
 
 <div class="container mt-5">
@@ -31,14 +34,40 @@
 @code {
     private bool IsLoading = false;
 
+    protected override async Task OnInitializedAsync()
+    {
+        // Auto-logout si viene directamente a esta página sin confirmación previa
+        // El usuario debe estar autenticado (protegido por [Authorize])
+        await base.OnInitializedAsync();
+    }
+
     private async Task ConfirmLogout()
     {
         IsLoading = true;
-        NavigationManager.NavigateTo("/api-auth/logout", forceLoad: true);
+        try
+        {
+            var (exitoso, mensaje) = await AuthService.LogoutAsync();
+            
+            if (exitoso)
+            {
+                // Redirigir al login con forceLoad para refrescar sesión
+                NavigationManager.NavigateTo("/auth/login", forceLoad: true);
+            }
+            else
+            {
+                // En caso de error, mostrar y permitir reintentar
+                IsLoading = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            IsLoading = false;
+        }
     }
 
     private void Cancel()
     {
+        // Volver al home si cancela el logout
         NavigationManager.NavigateTo("/");
     }
 }

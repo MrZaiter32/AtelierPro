@@ -39,6 +39,60 @@ public class AlmacenService
     }
 
     /// <summary>
+    /// Búsqueda lazy de refacciones con filtros y paginación.
+    /// </summary>
+    public async Task<(List<Refaccion> Items, int TotalItems, int TotalPaginas)> 
+        ObtenerRefaccionesLazyAsync(
+            string? busqueda = null,
+            string? categoria = null,
+            bool? alertaStock = null,
+            int pagina = 1,
+            int pageSize = 15,
+            bool soloActivas = true)
+    {
+        var query = _context.Refacciones.AsNoTracking().AsQueryable();
+
+        if (soloActivas)
+            query = query.Where(r => r.Activa);
+
+        // Filtro por búsqueda (SKU o Nombre)
+        if (!string.IsNullOrWhiteSpace(busqueda))
+        {
+            var searchTerm = busqueda.ToLower();
+            query = query.Where(r =>
+                r.Sku.ToLower().Contains(searchTerm) ||
+                r.Nombre.ToLower().Contains(searchTerm) ||
+                r.Descripcion.ToLower().Contains(searchTerm));
+        }
+
+        // Filtro por categoría
+        if (!string.IsNullOrWhiteSpace(categoria))
+            query = query.Where(r => r.Categoria == categoria);
+
+        // Alerta de stock
+        if (alertaStock == true)
+            query = query.Where(r => r.StockActual <= r.StockMinimo);
+        else if (alertaStock == false)
+            query = query.Where(r => r.StockActual > r.StockMinimo);
+
+        var totalItems = await query.CountAsync();
+        var totalPaginas = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+        // Validar página
+        if (pagina < 1) pagina = 1;
+        if (pagina > totalPaginas && totalPaginas > 0) pagina = totalPaginas;
+
+        var items = await query
+            .OrderBy(r => r.Categoria)
+            .ThenBy(r => r.Sku)
+            .Skip((pagina - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalItems, totalPaginas);
+    }
+
+    /// <summary>
     /// Obtiene una refacción por SKU.
     /// </summary>
     public async Task<Refaccion?> ObtenerRefaccionPorSkuAsync(string sku)

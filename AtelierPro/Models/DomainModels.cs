@@ -10,6 +10,7 @@ public enum EstadoPresupuesto
 {
     Borrador,
     Aprobado,
+    Rechazado,
     Cerrado,
     Facturado
 }
@@ -72,6 +73,7 @@ public sealed class ItemPresupuesto
     public TipoItemPresupuesto Tipo { get; set; }
     public string Codigo { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
+    public int Cantidad { get; set; } = 1;
     public double TiempoAsignadoHoras { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal PorcentajeAjuste { get; set; }
@@ -79,7 +81,7 @@ public sealed class ItemPresupuesto
     public bool RequiereDesmontajeDoble { get; set; }
     public bool RequiereAlineacion { get; set; }
 
-    public decimal CostoBase => PrecioUnitario * (decimal)TiempoAsignadoHoras;
+    public decimal CostoBase => PrecioUnitario * (decimal)TiempoAsignadoHoras * Cantidad;
     public decimal CostoAjustado => CostoBase * (1 + PorcentajeAjuste / 100m);
 }
 
@@ -430,12 +432,28 @@ public sealed class Tarifa
 public sealed class Presupuesto
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>Número único de presupuesto (ej: "P2024-00001").</summary>
+    public string Numero { get; set; } = string.Empty;
+    
+    /// <summary>Referencia al cliente que solicita el presupuesto.</summary>
+    public Guid? ClienteId { get; set; }
+    public Cliente? Cliente { get; set; }
+    
     public Vehiculo? Vehiculo { get; set; }
+    public string? PlacaVehiculo { get; set; }
+    public string? VinVehiculo { get; set; }
+    
     public IList<ItemPresupuesto> Items { get; set; } = new List<ItemPresupuesto>();
+    
     public decimal Subtotal => Items.Sum(i => i.CostoAjustado);
     public decimal IvaAplicado { get; set; }
-    public decimal TotalFinal { get; set; }
+    public decimal Total { get; set; }
+    
     public EstadoPresupuesto Estado { get; set; } = EstadoPresupuesto.Borrador;
+    public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+    public DateTime? FechaAprobacion { get; set; }
+    public string? Observaciones { get; set; }
 }
 
 public sealed class Cliente
